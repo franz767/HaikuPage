@@ -1,0 +1,119 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Nature Theme - Light Mode (TweakCN inspired) */
+    --background: 60 9% 98%;           /* Off-white calido */
+    --foreground: 20 14% 10%;          /* Casi negro tierra */
+
+    --card: 60 9% 98%;
+    --card-foreground: 20 14% 10%;
+
+    --popover: 60 9% 98%;
+    --popover-foreground: 20 14% 10%;
+
+    --primary: 142 43% 35%;            /* Verde bosque */
+    --primary-foreground: 60 9% 98%;
+
+    --secondary: 40 20% 90%;           /* Beige claro */
+    --secondary-foreground: 20 14% 10%;
+
+    --muted: 40 15% 94%;               /* Gris calido */
+    --muted-foreground: 20 10% 45%;
+
+    --accent: 142 43% 92%;             /* Verde claro */
+    --accent-foreground: 142 43% 25%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 60 9% 98%;
+
+    --border: 40 15% 88%;
+    --input: 40 15% 88%;
+    --ring: 142 43% 35%;
+
+    /* Colores para graficos - estilo Midday */
+    --chart-1: 142 43% 35%;            /* Verde - Ingresos */
+    --chart-2: 20 72% 55%;             /* Terracota - Gastos */
+    --chart-3: 40 60% 50%;             /* Dorado */
+    --chart-4: 180 30% 45%;            /* Verde azulado */
+    --chart-5: 25 85% 55%;             /* Naranja tierra */
+
+    --radius: 0.625rem;
+  }
+
+  .dark {
+    /* Nature Theme - Dark Mode (Forest Tones) */
+    --background: 20 14% 8%;           /* Casi negro calido */
+    --foreground: 60 9% 95%;
+
+    --card: 20 14% 10%;
+    --card-foreground: 60 9% 95%;
+
+    --popover: 20 14% 10%;
+    --popover-foreground: 60 9% 95%;
+
+    --primary: 142 43% 45%;            /* Verde mas brillante */
+    --primary-foreground: 20 14% 8%;
+
+    --secondary: 20 14% 15%;
+    --secondary-foreground: 60 9% 95%;
+
+    --muted: 20 14% 18%;
+    --muted-foreground: 60 5% 55%;
+
+    --accent: 142 30% 18%;
+    --accent-foreground: 142 43% 70%;
+
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 60 9% 98%;
+
+    --border: 20 14% 18%;
+    --input: 20 14% 18%;
+    --ring: 142 43% 45%;
+
+    --chart-1: 142 50% 50%;
+    --chart-2: 20 72% 60%;
+    --chart-3: 40 70% 55%;
+    --chart-4: 180 35% 50%;
+    --chart-5: 25 90% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Scrollbar minimalista estilo Midday */
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border-radius: 3px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground));
+  }
+}
