@@ -10,9 +10,12 @@ export function QueryProvider({ children }: { children: ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            // SSR: evitar refetch inmediato en el cliente
-            staleTime: 60 * 1000, // 1 minuto
+            // Optimización: Mantener datos frescos más tiempo para navegación rápida
+            staleTime: 5 * 60 * 1000, // 5 minutos - reduce refetches entre navegaciones
+            gcTime: 10 * 60 * 1000, // 10 minutos - mantener cache más tiempo
             refetchOnWindowFocus: false,
+            refetchOnMount: false, // No refetch si ya hay datos en cache
+            refetchOnReconnect: false,
             retry: 1,
           },
           mutations: {

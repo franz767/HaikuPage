@@ -16,34 +16,40 @@ interface HeaderProps {
 
 export function Header({ user }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      {/* Left side - breadcrumbs or search could go here */}
-      <div className="flex items-center gap-4">
-        {/* Placeholder for future search */}
+    <header className="sticky top-0 z-30 flex h-14 items-center border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      {/* Left side - espacio para breadcrumbs o búsqueda futura */}
+      <div className="flex-1 px-6">
+        {/* Placeholder */}
       </div>
 
-      {/* Right side */}
-      <div className="flex items-center gap-4">
-        {/* Notifications */}
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
+      {/* Centro - espacio vacío expandible */}
+      <div className="flex-1" />
+
+      {/* Derecha - Panel de información del usuario */}
+      <div className="flex items-center gap-3 border-l bg-muted/30 px-5 h-full">
+        {/* Notificaciones */}
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+          <Bell className="h-4 w-4" />
           <span className="sr-only">Notificaciones</span>
         </Button>
 
-        {/* User info */}
+        {/* Separador visual */}
+        <div className="h-6 w-px bg-border" />
+
+        {/* Info del usuario */}
         <div className="flex items-center gap-3">
-          <div className="hidden text-right sm:block">
-            <p className="text-sm font-medium">{user.full_name}</p>
+          <div className="text-right">
+            <p className="text-sm font-medium leading-tight">{user.full_name}</p>
             <Badge
               variant={user.role === "admin" ? "default" : "secondary"}
-              className="text-[10px]"
+              className="text-[10px] mt-0.5"
             >
               {user.role === "admin" ? "Admin" : "Colaborador"}
             </Badge>
           </div>
-          <Avatar className="h-9 w-9">
+          <Avatar className="h-9 w-9 ring-2 ring-background shadow-sm">
             <AvatarImage src={user.avatar_url ?? undefined} />
-            <AvatarFallback className="bg-primary/10 text-primary">
+            <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
               {getInitials(user.full_name)}
             </AvatarFallback>
           </Avatar>

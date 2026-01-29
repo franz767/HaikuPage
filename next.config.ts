@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Optimizaciones de rendimiento
+  experimental: {
+    // Optimización de paquetes para carga más rápida
+    optimizePackageImports: ["lucide-react", "@tanstack/react-query", "recharts"],
+  },
   images: {
     remotePatterns: [
       {

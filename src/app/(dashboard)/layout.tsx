@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
+import { PrefetchData } from "@/components/layout/prefetch-data";
 import { isAdmin } from "@/types/profile";
 
 export default async function DashboardLayout({
@@ -35,6 +36,9 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Prefetch datos críticos en background */}
+      <PrefetchData />
+
       {/* Sidebar */}
       <Sidebar isAdmin={userIsAdmin} />
 
@@ -52,3 +56,5 @@ export default async function DashboardLayout({
     </div>
   );
 }
+
+

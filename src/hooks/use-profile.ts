@@ -48,6 +48,9 @@ export function useCurrentProfile() {
         email: user.email,
       };
     },
+    // Optimización: El perfil raramente cambia, mantenerlo en cache más tiempo
+    staleTime: Infinity,
+    gcTime: Infinity,
   });
 }
 

@@ -99,6 +99,8 @@ export function useProjects() {
   return useQuery({
     queryKey: projectKeys.lists(),
     queryFn: fetchProjects,
+    // Optimización: Mantener lista de proyectos en cache para navegación rápida
+    staleTime: 5 * 60 * 1000, // 5 minutos
   });
 }
 
