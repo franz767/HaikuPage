@@ -25,64 +25,66 @@ export const projectKeys = {
 // Fetchers
 // ==============================================
 
+interface ProjectRow {
+  id: string;
+  name: string;
+  description: string | null;
+  status: ProjectStatus;
+  deadline: string | null;
+  client_id: string | null;
+  metadata: Record<string, unknown> | null;
+  budget: number | null;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+}
+
 async function fetchProjects(): Promise<ProjectWithRelations[]> {
   const supabase = createClient();
 
   const { data, error } = await supabase
     .from("projects")
-    .select(
-      `
-      *,
-      client:clients(id, name, company),
-      members:project_members(
-        profile:profiles(id, full_name, avatar_url)
-      )
-    `
-    )
+    .select("*")
     .order("created_at", { ascending: false });
 
   if (error) {
+    console.error("Error fetching projects:", error);
     throw new Error(error.message);
   }
 
-  // Transformar la estructura de members
-  return (data ?? []).map((project) => ({
+  const projects = data as ProjectRow[] | null;
+
+  return (projects ?? []).map((project) => ({
     ...project,
     metadata: (project.metadata ?? {}) as ProjectMetadata,
-    members:
-      project.members
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ?.map((m: any) => m.profile)
-        .filter(Boolean) ?? [],
+    client: null,
+    members: [],
   }));
 }
 
 async function fetchProject(id: string): Promise<ProjectWithRelations> {
   const supabase = createClient();
 
+  // Obtener proyecto con cliente
   const { data, error } = await supabase
     .from("projects")
-    .select(
-      `
+    .select(`
       *,
-      client:clients(id, name, company, email),
-      members:project_members(
-        profile:profiles(id, full_name, avatar_url)
-      )
-    `
-    )
+      client:clients(id, name, company, email)
+    `)
     .eq("id", id)
     .single();
 
   if (error) {
+    console.error("Error fetching project:", error);
     throw new Error(error.message);
   }
 
   return {
     ...data,
     metadata: (data.metadata ?? {}) as ProjectMetadata,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    members: data.members?.map((m: any) => m.profile).filter(Boolean) ?? [],
+    client: data.client || null,
+    members: [],
   };
 }
 
@@ -132,13 +134,13 @@ export function useCreateProject() {
         .from("projects")
         .insert({
           name: input.name,
-          description: input.description,
+          description: input.description ?? null,
           status: input.status ?? "draft",
-          deadline: input.deadline,
-          client_id: input.client_id,
-          budget: input.budget,
+          deadline: input.deadline ?? null,
+          client_id: input.client_id ?? null,
+          budget: input.budget ?? null,
           metadata: input.metadata ?? {},
-        })
+        } as never)
         .select()
         .single();
 
@@ -174,13 +176,13 @@ export function useUpdateProject() {
     }) => {
       const { data, error } = await supabase
         .from("projects")
-        .update(updates)
+        .update(updates as never)
         .eq("id", id)
         .select()
         .single();
 
       if (error) throw new Error(error.message);
-      return data;
+      return data as ProjectRow;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: projectKeys.lists() });
@@ -198,7 +200,10 @@ export function useDeleteProject() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("projects").delete().eq("id", id);
+      const { error } = await supabase
+        .from("projects")
+        .delete()
+        .eq("id", id);
 
       if (error) throw new Error(error.message);
       return id;

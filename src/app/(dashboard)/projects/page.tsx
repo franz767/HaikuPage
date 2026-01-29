@@ -6,9 +6,13 @@ import { Button } from "@/components/ui/button";
 import { ProjectCard } from "@/components/projects/project-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProjects } from "@/hooks/use-projects";
+import { useCurrentProfile } from "@/hooks/use-profile";
 
 export default function ProjectsPage() {
   const { data: projects, isLoading, error } = useProjects();
+  const { data: profile } = useCurrentProfile();
+
+  const isAdmin = profile?.role === "admin";
 
   return (
     <div className="space-y-6">
@@ -20,12 +24,14 @@ export default function ProjectsPage() {
             Gestiona todos tus proyectos
           </p>
         </div>
-        <Button asChild>
-          <Link href="/projects/new">
-            <Plus className="mr-2 h-4 w-4" />
-            Nuevo Proyecto
-          </Link>
-        </Button>
+{isAdmin && (
+          <Button asChild>
+            <Link href="/projects/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Nuevo Proyecto
+            </Link>
+          </Button>
+        )}
       </div>
 
       {/* Projects Grid */}
@@ -43,14 +49,18 @@ export default function ProjectsPage() {
         <div className="rounded-lg border border-dashed p-12 text-center">
           <h3 className="text-lg font-medium">No hay proyectos</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Crea tu primer proyecto para comenzar
+            {isAdmin
+              ? "Crea tu primer proyecto para comenzar"
+              : "No tienes proyectos asignados"}
           </p>
-          <Button className="mt-4" asChild>
-            <Link href="/projects/new">
-              <Plus className="mr-2 h-4 w-4" />
-              Crear proyecto
-            </Link>
-          </Button>
+          {isAdmin && (
+            <Button className="mt-4" asChild>
+              <Link href="/projects/new">
+                <Plus className="mr-2 h-4 w-4" />
+                Crear proyecto
+              </Link>
+            </Button>
+          )}
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

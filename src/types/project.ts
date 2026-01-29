@@ -54,11 +54,11 @@ export interface ProjectWithRelations extends ProjectWithMetadata {
 // ==============================================
 
 export const PROJECT_STATUS = {
-  draft: { label: "Borrador", color: "secondary" },
-  active: { label: "Activo", color: "default" },
-  on_hold: { label: "En pausa", color: "warning" },
-  completed: { label: "Completado", color: "success" },
-  cancelled: { label: "Cancelado", color: "destructive" },
+  inicio: { label: "Inicio", color: "secondary" },
+  desarrollo: { label: "Desarrollo", color: "default" },
+  bloqueado: { label: "Bloqueado", color: "destructive" },
+  testing: { label: "Testing", color: "warning" },
+  entregado: { label: "Entregado", color: "success" },
 } as const;
 
 export const PROJECT_STATUS_OPTIONS = Object.entries(PROJECT_STATUS).map(

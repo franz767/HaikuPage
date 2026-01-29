@@ -98,7 +98,7 @@ export type Database = {
           id: string;
           name: string;
           description: string | null;
-          status: "draft" | "active" | "on_hold" | "completed" | "cancelled";
+          status: "inicio" | "desarrollo" | "bloqueado" | "testing" | "entregado";
           deadline: string | null;
           client_id: string | null;
           metadata: Json;
@@ -111,7 +111,7 @@ export type Database = {
           id?: string;
           name: string;
           description?: string | null;
-          status?: "draft" | "active" | "on_hold" | "completed" | "cancelled";
+          status?: "inicio" | "desarrollo" | "bloqueado" | "testing" | "entregado";
           deadline?: string | null;
           client_id?: string | null;
           metadata?: Json;
@@ -124,7 +124,7 @@ export type Database = {
           id?: string;
           name?: string;
           description?: string | null;
-          status?: "draft" | "active" | "on_hold" | "completed" | "cancelled";
+          status?: "inicio" | "desarrollo" | "bloqueado" | "testing" | "entregado";
           deadline?: string | null;
           client_id?: string | null;
           metadata?: Json;
@@ -268,7 +268,7 @@ export type Database = {
     };
     Enums: {
       user_role: "admin" | "user";
-      project_status: "draft" | "active" | "on_hold" | "completed" | "cancelled";
+      project_status: "inicio" | "desarrollo" | "bloqueado" | "testing" | "entregado";
       transaction_type: "income" | "expense";
     };
     CompositeTypes: {

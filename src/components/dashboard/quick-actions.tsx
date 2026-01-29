@@ -13,7 +13,7 @@ export function QuickActions({ isAdmin }: QuickActionsProps) {
       label: "Nuevo Proyecto",
       href: "/projects/new",
       icon: FolderPlus,
-      adminOnly: false,
+      adminOnly: true,
     },
     {
       label: "Nuevo Cliente",
@@ -30,6 +30,10 @@ export function QuickActions({ isAdmin }: QuickActionsProps) {
   ];
 
   const filteredActions = actions.filter((action) => !action.adminOnly || isAdmin);
+
+  if (filteredActions.length === 0) {
+    return null;
+  }
 
   return (
     <Card>
