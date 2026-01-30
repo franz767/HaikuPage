@@ -6,15 +6,21 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FinancialOverview } from "@/components/dashboard/financial-overview";
+import { PendingPaymentsTable } from "@/components/payments/PendingPaymentsTable";
+import { AllPaymentsTable } from "@/components/payments/AllPaymentsTable";
 import { useFinancialChartData, useFinancialSummary } from "@/hooks/use-transactions";
+import { useCurrentProfile } from "@/hooks/use-profile";
 import { formatCurrency } from "@/types/transaction";
+import { isAdmin } from "@/types/profile";
 import { cn } from "@/lib/utils";
 
 export default function FinancesPage() {
+  const { data: profile } = useCurrentProfile();
   const { data: chartData, isLoading: chartLoading } = useFinancialChartData(6);
   const { data: summary, isLoading: summaryLoading } = useFinancialSummary();
 
   const isLoading = chartLoading || summaryLoading;
+  const userIsAdmin = isAdmin(profile);
 
   return (
     <div className="space-y-6">
@@ -33,6 +39,12 @@ export default function FinancesPage() {
           </Link>
         </Button>
       </div>
+
+      {/* Pagos Pendientes de Aprobacion (solo admin) */}
+      {userIsAdmin && <PendingPaymentsTable />}
+
+      {/* Historial de todos los pagos (solo admin) */}
+      {userIsAdmin && <AllPaymentsTable />}
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-3">

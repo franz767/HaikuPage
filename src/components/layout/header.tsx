@@ -1,9 +1,8 @@
 "use client";
 
-import { Bell } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { NotificationDropdown } from "@/components/notifications/NotificationDropdown";
 import { getInitials } from "@/types/profile";
 
 interface HeaderProps {
@@ -28,10 +27,7 @@ export function Header({ user }: HeaderProps) {
       {/* Derecha - Panel de información del usuario */}
       <div className="flex items-center gap-3 border-l bg-muted/30 px-5 h-full">
         {/* Notificaciones */}
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-          <Bell className="h-4 w-4" />
-          <span className="sr-only">Notificaciones</span>
-        </Button>
+        <NotificationDropdown />
 
         {/* Separador visual */}
         <div className="h-6 w-px bg-border" />

@@ -34,7 +34,9 @@ import {
 } from "@/hooks/use-project-members";
 import { useCurrentProfile } from "@/hooks/use-profile";
 import { KanbanBoard } from "@/components/kanban";
-import { PROJECT_STATUS, type ProjectStatus } from "@/types/project";
+import { PaymentSubmissionModal } from "@/components/payments/PaymentSubmissionModal";
+import { useProjectPayments } from "@/hooks/use-payment-submissions";
+import { PROJECT_STATUS, type ProjectStatus, type PaymentInstallment } from "@/types/project";
 import { cn } from "@/lib/utils";
 
 interface PageProps {
@@ -48,6 +50,7 @@ export default function ProjectDetailPage({ params }: PageProps) {
   const { data: project, isLoading, error } = useProject(id);
   const { data: members, isLoading: membersLoading } = useProjectMembers(id);
   const { data: allUsers } = useAllUsers();
+  const { data: projectPayments = [] } = useProjectPayments(id);
   const deleteProject = useDeleteProject();
   const updateProject = useUpdateProject();
   const addMember = useAddProjectMember();
@@ -55,12 +58,33 @@ export default function ProjectDetailPage({ params }: PageProps) {
 
   const [showAddMember, setShowAddMember] = useState(false);
   const [showStatusSelector, setShowStatusSelector] = useState(false);
-  const [isPanelOpen, setIsPanelOpen] = useState(true);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [selectedInstallment, setSelectedInstallment] = useState<PaymentInstallment | null>(null);
 
   const isAdmin = profile?.role === "admin";
 
+  // Obtener IDs de admins para notificaciones de pago
+  const adminUserIds = allUsers?.filter((u) => u.role === "admin").map((u) => u.id) || [];
+
   // Verificar si el usuario actual es miembro del proyecto
   const isMember = members?.some((m) => m.user_id === profile?.id);
+
+  // Puede pagar: si es miembro O si es admin
+  const canPay = isMember || isAdmin;
+
+  // Helper para obtener el pago aprobado de una cuota
+  const getApprovedPayment = (installmentNumber: number) => {
+    return projectPayments.find(
+      (p) => p.installment_number === installmentNumber && p.status === "approved"
+    );
+  };
+
+  // Helper para obtener pago pendiente de una cuota
+  const getPendingPayment = (installmentNumber: number) => {
+    return projectPayments.find(
+      (p) => p.installment_number === installmentNumber && p.status === "pending"
+    );
+  };
 
   const handleDelete = async () => {
     if (!confirm("¿Estas seguro de eliminar este proyecto?")) return;
@@ -248,20 +272,6 @@ export default function ProjectDetailPage({ params }: PageProps) {
           </h2>
           <KanbanBoard projectId={id} isAdmin={isAdmin} />
         </div>
-
-        {/* Metadata */}
-        {project.metadata && Object.keys(project.metadata).length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Configuracion</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <pre className="text-sm bg-muted p-4 rounded-md overflow-auto">
-                {JSON.stringify(project.metadata, null, 2)}
-              </pre>
-            </CardContent>
-          </Card>
-        )}
       </div>
 
       {/* Panel lateral derecho - Información del proyecto (Colapsable) */}
@@ -457,9 +467,150 @@ export default function ProjectDetailPage({ params }: PageProps) {
                 )}
               </CardContent>
             </Card>
+
+            {/* Cuotas de Pago */}
+            {project.metadata?.payment_installments && project.metadata.payment_installments.length > 0 && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    Cuotas de Pago
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {project.metadata.payment_installments.map((installment, index) => {
+                    const approvedPayment = getApprovedPayment(installment.number);
+                    const pendingPayment = getPendingPayment(installment.number);
+
+                    return (
+                      <div
+                        key={index}
+                        onClick={() => {
+                          // Solo abrir modal si no está pagada, no tiene pago pendiente y puede pagar
+                          if (!installment.paid && !pendingPayment && canPay) {
+                            setSelectedInstallment(installment);
+                          }
+                        }}
+                        className={cn(
+                          "p-2 rounded-md text-xs transition-colors",
+                          installment.paid
+                            ? "bg-emerald-50 border border-emerald-200"
+                            : pendingPayment
+                            ? "bg-amber-50 border border-amber-200"
+                            : "bg-muted/50",
+                          // Hacer clickeable si no está pagada, no tiene pago pendiente y puede pagar
+                          !installment.paid && !pendingPayment && canPay && "cursor-pointer hover:bg-muted hover:border hover:border-primary/30"
+                        )}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className={cn(
+                              "flex items-center justify-center h-6 w-6 rounded-full text-[10px] font-medium",
+                              installment.paid
+                                ? "bg-emerald-500 text-white"
+                                : pendingPayment
+                                ? "bg-amber-500 text-white"
+                                : "bg-muted text-muted-foreground"
+                            )}>
+                              {installment.paid ? <Check className="h-3 w-3" /> : `${installment.number}`}
+                            </div>
+                            <div>
+                              <p className="font-medium">
+                                S/ {installment.amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground">
+                                Vence: {new Date(installment.date).toLocaleDateString("es-PE", {
+                                  day: "numeric",
+                                  month: "short",
+                                })}
+                              </p>
+                            </div>
+                          </div>
+                          <Badge
+                            variant={installment.paid ? "default" : pendingPayment ? "secondary" : "secondary"}
+                            className={cn(
+                              "text-[9px] px-1.5 py-0",
+                              installment.paid && "bg-emerald-600",
+                              pendingPayment && "bg-amber-500 text-white"
+                            )}
+                          >
+                            {installment.paid ? "Pagado" : pendingPayment ? "En revision" : canPay ? "Pagar" : "Pend."}
+                          </Badge>
+                        </div>
+
+                        {/* Info del pago aprobado */}
+                        {approvedPayment && (
+                          <div className="mt-2 pt-2 border-t border-emerald-200 text-[10px] space-y-1">
+                            <div className="flex justify-between text-muted-foreground">
+                              <span>ID Transaccion:</span>
+                              <span className="font-mono">{approvedPayment.id.slice(0, 8).toUpperCase()}</span>
+                            </div>
+                            <div className="flex justify-between text-muted-foreground">
+                              <span>Fecha de pago:</span>
+                              <span>{new Date(approvedPayment.reviewed_at || approvedPayment.submitted_at).toLocaleDateString("es-PE", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              })}</span>
+                            </div>
+                            <div className="flex justify-between text-muted-foreground">
+                              <span>Monto:</span>
+                              <span className="font-medium text-emerald-700">
+                                S/ {approvedPayment.amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Info del pago pendiente */}
+                        {pendingPayment && !installment.paid && (
+                          <div className="mt-2 pt-2 border-t border-amber-200 text-[10px] space-y-1">
+                            <div className="flex justify-between text-muted-foreground">
+                              <span>ID Solicitud:</span>
+                              <span className="font-mono">{pendingPayment.id.slice(0, 8).toUpperCase()}</span>
+                            </div>
+                            <div className="flex justify-between text-muted-foreground">
+                              <span>Enviado:</span>
+                              <span>{new Date(pendingPayment.submitted_at).toLocaleDateString("es-PE", {
+                                day: "numeric",
+                                month: "short",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}</span>
+                            </div>
+                            <p className="text-amber-700 font-medium">Pago en revision por admin</p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {/* Total */}
+                  <div className="flex justify-between pt-2 border-t text-xs font-medium">
+                    <span>Total:</span>
+                    <span>
+                      S/ {project.metadata.payment_installments
+                        .reduce((sum, inst) => sum + inst.amount, 0)
+                        .toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </aside>
       </div>
+
+      {/* Modal de pago de cuota */}
+      {selectedInstallment && (
+        <PaymentSubmissionModal
+          isOpen={!!selectedInstallment}
+          onClose={() => setSelectedInstallment(null)}
+          projectId={id}
+          projectName={project.name}
+          installment={selectedInstallment}
+          adminUserIds={adminUserIds}
+        />
+      )}
     </div>
   );
 }
