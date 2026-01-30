@@ -58,7 +58,7 @@ export default function ProjectDetailPage({ params }: PageProps) {
 
   const [showAddMember, setShowAddMember] = useState(false);
   const [showStatusSelector, setShowStatusSelector] = useState(false);
-  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [isPanelOpen, setIsPanelOpen] = useState(true);
   const [selectedInstallment, setSelectedInstallment] = useState<PaymentInstallment | null>(null);
 
   const isAdmin = profile?.role === "admin";
@@ -496,8 +496,8 @@ export default function ProjectDetailPage({ params }: PageProps) {
                           installment.paid
                             ? "bg-emerald-50 border border-emerald-200"
                             : pendingPayment
-                            ? "bg-amber-50 border border-amber-200"
-                            : "bg-muted/50",
+                              ? "bg-amber-50 border border-amber-200"
+                              : "bg-muted/50",
                           // Hacer clickeable si no está pagada, no tiene pago pendiente y puede pagar
                           !installment.paid && !pendingPayment && canPay && "cursor-pointer hover:bg-muted hover:border hover:border-primary/30"
                         )}
@@ -509,8 +509,8 @@ export default function ProjectDetailPage({ params }: PageProps) {
                               installment.paid
                                 ? "bg-emerald-500 text-white"
                                 : pendingPayment
-                                ? "bg-amber-500 text-white"
-                                : "bg-muted text-muted-foreground"
+                                  ? "bg-amber-500 text-white"
+                                  : "bg-muted text-muted-foreground"
                             )}>
                               {installment.paid ? <Check className="h-3 w-3" /> : `${installment.number}`}
                             </div>

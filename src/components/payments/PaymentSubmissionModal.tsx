@@ -81,22 +81,27 @@ export function PaymentSubmissionModal({
         receipt_url: receiptUrl,
       });
 
-      // 3. Notificar a todos los admins
+      // 3. Notificar a todos los admins (opcional - no bloquea si falla)
       if (adminUserIds.length > 0) {
-        const notifications = adminUserIds.map((adminId) => ({
-          user_id: adminId,
-          type: "payment_pending_review" as const,
-          title: "Pago pendiente de revision",
-          message: `Un pago de S/ ${installment.amount.toLocaleString("es-PE")} para "${projectName}" requiere aprobacion`,
-          data: {
-            project_id: projectId,
-            project_name: projectName,
-            installment_number: installment.number,
-            amount: installment.amount,
-          },
-        }));
+        try {
+          const notifications = adminUserIds.map((adminId) => ({
+            user_id: adminId,
+            type: "payment_pending_review" as const,
+            title: "Pago pendiente de revision",
+            message: `Un pago de S/ ${installment.amount.toLocaleString("es-PE")} para "${projectName}" requiere aprobacion`,
+            data: {
+              project_id: projectId,
+              project_name: projectName,
+              installment_number: installment.number,
+              amount: installment.amount,
+            },
+          }));
 
-        await createNotifications.mutateAsync(notifications);
+          await createNotifications.mutateAsync(notifications);
+        } catch (notifError) {
+          // Las notificaciones fallaron pero el pago se registró correctamente
+          console.warn("No se pudieron enviar notificaciones:", notifError);
+        }
       }
 
       setIsSuccess(true);

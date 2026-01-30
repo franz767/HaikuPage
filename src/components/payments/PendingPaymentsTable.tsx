@@ -38,19 +38,25 @@ export function PendingPaymentsTable() {
         installmentNumber: submission.installment_number,
       });
 
-      // Notificar al usuario que envio el pago
-      await createNotification.mutateAsync({
-        user_id: submission.submitted_by,
-        type: "payment_approved",
-        title: "Pago aprobado",
-        message: `Tu pago de la cuota #${submission.installment_number} ha sido aprobado`,
-        data: {
-          project_id: submission.project_id,
-          project_name: submission.project?.name,
-          installment_number: submission.installment_number,
-          amount: submission.amount,
-        },
-      });
+      // Notificar al usuario que envio el pago (en try-catch separado)
+      try {
+        console.log("Enviando notificación a:", submission.submitted_by);
+        await createNotification.mutateAsync({
+          user_id: submission.submitted_by,
+          type: "payment_approved",
+          title: "Pago aprobado",
+          message: `Tu pago de la cuota #${submission.installment_number} ha sido aprobado`,
+          data: {
+            project_id: submission.project_id,
+            project_name: submission.project?.name,
+            installment_number: submission.installment_number,
+            amount: submission.amount,
+          },
+        });
+        console.log("Notificación enviada exitosamente");
+      } catch (notifError) {
+        console.error("Error al enviar notificación (el pago se aprobó correctamente):", notifError);
+      }
     } catch (error) {
       console.error("Error al aprobar:", error);
       alert("Error al aprobar: " + (error as Error).message);
@@ -70,20 +76,26 @@ export function PendingPaymentsTable() {
         notes: rejectNotes,
       });
 
-      // Notificar al usuario
-      await createNotification.mutateAsync({
-        user_id: selectedSubmission.submitted_by,
-        type: "payment_rejected",
-        title: "Pago rechazado",
-        message: `Tu pago de la cuota #${selectedSubmission.installment_number} ha sido rechazado${rejectNotes ? `. Motivo: ${rejectNotes}` : ""}`,
-        data: {
-          project_id: selectedSubmission.project_id,
-          project_name: selectedSubmission.project?.name,
-          installment_number: selectedSubmission.installment_number,
-          amount: selectedSubmission.amount,
-          rejection_notes: rejectNotes,
-        },
-      });
+      // Notificar al usuario (en try-catch separado)
+      try {
+        console.log("Enviando notificación de rechazo a:", selectedSubmission.submitted_by);
+        await createNotification.mutateAsync({
+          user_id: selectedSubmission.submitted_by,
+          type: "payment_rejected",
+          title: "Pago rechazado",
+          message: `Tu pago de la cuota #${selectedSubmission.installment_number} ha sido rechazado${rejectNotes ? `. Motivo: ${rejectNotes}` : ""}`,
+          data: {
+            project_id: selectedSubmission.project_id,
+            project_name: selectedSubmission.project?.name,
+            installment_number: selectedSubmission.installment_number,
+            amount: selectedSubmission.amount,
+            rejection_notes: rejectNotes,
+          },
+        });
+        console.log("Notificación de rechazo enviada exitosamente");
+      } catch (notifError) {
+        console.error("Error al enviar notificación (el pago se rechazó correctamente):", notifError);
+      }
 
       // Limpiar estado
       setSelectedSubmission(null);

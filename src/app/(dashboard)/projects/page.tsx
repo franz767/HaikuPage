@@ -24,7 +24,7 @@ export default function ProjectsPage() {
             Gestiona todos tus proyectos
           </p>
         </div>
-{isAdmin && (
+        {profile && isAdmin && (
           <Button asChild>
             <Link href="/projects/new">
               <Plus className="mr-2 h-4 w-4" />

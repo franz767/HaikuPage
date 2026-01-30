@@ -154,60 +154,54 @@ export function useMarkAllNotificationsRead() {
 
 /**
  * Hook para crear una notificacion
- * Se usa internamente para enviar notificaciones a usuarios
+ * Usa una función RPC que bypasa RLS para insertar
  */
 export function useCreateNotification() {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: async (notification: NotificationInsert) => {
       const supabase = createClient();
 
-      const { data, error } = await supabase
-        .from("notifications")
-        .insert({
-          user_id: notification.user_id,
-          type: notification.type,
-          title: notification.title,
-          message: notification.message,
-          data: notification.data || {},
-        } as never)
-        .select()
-        .single();
+      // Usar la función RPC que bypasa RLS
+      const { data, error } = await supabase.rpc("create_notification" as never, {
+        p_user_id: notification.user_id,
+        p_type: notification.type,
+        p_title: notification.title,
+        p_message: notification.message,
+        p_data: notification.data || {},
+      } as never);
 
       if (error) throw new Error(error.message);
-      return data as Notification;
-    },
-    onSuccess: () => {
-      // No invalidamos aqui porque las notificaciones son para otros usuarios
-      // El polling se encargara de actualizar
+      return { id: data as string } as unknown as Notification;
     },
   });
 }
 
 /**
  * Hook para crear multiples notificaciones (para notificar a varios admins)
+ * Usa la función RPC que bypasa RLS para cada notificación
  */
 export function useCreateNotifications() {
   return useMutation({
     mutationFn: async (notifications: NotificationInsert[]) => {
       const supabase = createClient();
 
-      const { data, error } = await supabase
-        .from("notifications")
-        .insert(
-          notifications.map((n) => ({
-            user_id: n.user_id,
-            type: n.type,
-            title: n.title,
-            message: n.message,
-            data: n.data || {},
-          })) as never[]
-        )
-        .select();
+      // Crear cada notificación usando la función RPC
+      const results = await Promise.all(
+        notifications.map(async (n) => {
+          const { data, error } = await supabase.rpc("create_notification" as never, {
+            p_user_id: n.user_id,
+            p_type: n.type,
+            p_title: n.title,
+            p_message: n.message,
+            p_data: n.data || {},
+          } as never);
 
-      if (error) throw new Error(error.message);
-      return data as Notification[];
+          if (error) throw new Error(error.message);
+          return { id: data as string } as unknown as Notification;
+        })
+      );
+
+      return results;
     },
   });
 }

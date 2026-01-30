@@ -23,11 +23,20 @@ export interface ProjectIntegrations {
   [key: string]: string | undefined;
 }
 
+// Tipo para cuotas de pago
+export interface PaymentInstallment {
+  number: number;
+  amount: number;
+  date: string; // ISO date string
+  paid: boolean;
+}
+
 export interface ProjectMetadata {
   n8n_workflow_id?: string | null;
   ai_prompts?: AIPrompts;
   integrations?: ProjectIntegrations;
   custom_fields?: Record<string, unknown>;
+  payment_installments?: PaymentInstallment[];
 }
 
 // Project con metadata tipado correctamente
@@ -75,7 +84,7 @@ export const PROJECT_STATUS_OPTIONS = Object.entries(PROJECT_STATUS).map(
 export function hasAIConfiguration(metadata: ProjectMetadata): boolean {
   return Boolean(
     metadata?.n8n_workflow_id ||
-      (metadata?.ai_prompts && Object.keys(metadata.ai_prompts).length > 0)
+    (metadata?.ai_prompts && Object.keys(metadata.ai_prompts).length > 0)
   );
 }
 
