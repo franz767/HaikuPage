@@ -322,6 +322,12 @@ export type Database = {
         };
         Returns: boolean;
       };
+      update_task_order: {
+        Args: {
+          payload: Json;
+        };
+        Returns: Json;
+      };
     };
     Enums: {
       user_role: "admin" | "user";

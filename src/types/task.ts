@@ -5,16 +5,24 @@ export type Task = Database["public"]["Tables"]["project_tasks"]["Row"] & {
     start_date?: string | null;
     due_date?: string | null;
     due_time?: string | null;
+    is_completed?: boolean;
+    // Contadores desnormalizados para evitar N+1 queries
+    checklist_total?: number;
+    checklist_completed?: number;
+    attachments_count?: number;
+    comments_count?: number;
 };
 export type TaskInsert = Database["public"]["Tables"]["project_tasks"]["Insert"] & {
     start_date?: string | null;
     due_date?: string | null;
     due_time?: string | null;
+    is_completed?: boolean;
 };
 export type TaskUpdate = Database["public"]["Tables"]["project_tasks"]["Update"] & {
     start_date?: string | null;
     due_date?: string | null;
     due_time?: string | null;
+    is_completed?: boolean;
 };
 
 // Estados posibles para las tareas (columnas del Kanban)
@@ -74,6 +82,48 @@ export interface TaskAttachment {
     file_size: number | null;
     uploaded_by: string | null;
     created_at: string;
+}
+
+// Tipos para Comentarios
+export interface TaskComment {
+    id: string;
+    task_id: string;
+    user_id: string;
+    content: string;
+    created_at: string;
+    updated_at: string;
+    // Datos del usuario (joined)
+    user?: {
+        id: string;
+        full_name: string | null;
+        avatar_url: string | null;
+    };
+}
+
+// Tipos para Actividad
+export type ActivityType =
+    | "created"
+    | "status_changed"
+    | "comment_added"
+    | "checklist_added"
+    | "checklist_completed"
+    | "attachment_added"
+    | "due_date_set"
+    | "label_changed";
+
+export interface TaskActivity {
+    id: string;
+    task_id: string;
+    user_id: string;
+    activity_type: ActivityType;
+    metadata: Record<string, any> | null;
+    created_at: string;
+    // Datos del usuario (joined)
+    user?: {
+        id: string;
+        full_name: string | null;
+        avatar_url: string | null;
+    };
 }
 
 // Función helper para obtener columna por ID

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import {
     X, Calendar, CheckSquare, Users, Paperclip, Plus, MessageSquare, Clock,
-    Trash2, FileText, Image, File, ChevronLeft, ChevronRight
+    Trash2, FileText, Image, File, ChevronLeft, ChevronRight, Edit2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,8 @@ import { useUpdateTask } from "@/hooks/use-tasks";
 import {
     useChecklists, useCreateChecklist, useDeleteChecklist,
     useCreateChecklistItem, useToggleChecklistItem, useDeleteChecklistItem,
-    useAttachments, useUploadAttachment, useDeleteAttachment
+    useAttachments, useUploadAttachment, useDeleteAttachment,
+    useComments, useCreateComment, useDeleteComment, useUpdateComment, useActivities
 } from "@/hooks/use-task-extras";
 import { TASK_COLUMNS, LABEL_COLORS, type Task, type TaskStatus, type TaskAttachment } from "@/types/task";
 import { cn } from "@/lib/utils";
@@ -42,6 +43,9 @@ export function TaskDetailModal({ task, isOpen, onClose, isAdmin }: TaskDetailMo
     const [newChecklistTitle, setNewChecklistTitle] = useState("Checklist");
     const [newItemTexts, setNewItemTexts] = useState<Record<string, string>>({});
     const [previewAttachment, setPreviewAttachment] = useState<TaskAttachment | null>(null);
+    const [newComment, setNewComment] = useState("");
+    const [showActivity, setShowActivity] = useState(true);
+    const [isCompleted, setIsCompleted] = useState(task.is_completed || false);
 
     // Date states
     const [startDate, setStartDate] = useState(task.start_date || "");
@@ -52,15 +56,24 @@ export function TaskDetailModal({ task, isOpen, onClose, isAdmin }: TaskDetailMo
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const updateTask = useUpdateTask();
-    const { data: checklists = [] } = useChecklists(task.id);
+
+    // ✅ OPTIMIZACIÓN: Los hooks solo hacen fetch cuando el modal está abierto
+    const { data: checklists = [] } = useChecklists(task.id, isOpen);
     const createChecklist = useCreateChecklist();
     const deleteChecklist = useDeleteChecklist();
     const createChecklistItem = useCreateChecklistItem();
     const toggleChecklistItem = useToggleChecklistItem();
     const deleteChecklistItem = useDeleteChecklistItem();
-    const { data: attachments = [] } = useAttachments(task.id);
+    const { data: attachments = [] } = useAttachments(task.id, isOpen);
     const uploadAttachment = useUploadAttachment();
     const deleteAttachment = useDeleteAttachment();
+    const { data: comments = [] } = useComments(task.id, isOpen);
+    const createComment = useCreateComment();
+    const deleteComment = useDeleteComment();
+    const updateComment = useUpdateComment();
+    const { data: activities = [] } = useActivities(task.id, isOpen);
+    const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+    const [editingCommentContent, setEditingCommentContent] = useState("");
 
     // Reset state when task changes
     useEffect(() => {
@@ -69,6 +82,7 @@ export function TaskDetailModal({ task, isOpen, onClose, isAdmin }: TaskDetailMo
         setStatus(task.status as TaskStatus);
         setLabelColor(task.label_color || "");
         setLabelText(task.label_text || "");
+        setIsCompleted(task.is_completed || false);
         setStartDate(task.start_date || "");
         setDueDate(task.due_date || "");
         setDueTime(task.due_time || "");
@@ -251,24 +265,51 @@ export function TaskDetailModal({ task, isOpen, onClose, isAdmin }: TaskDetailMo
                         {/* Main Content */}
                         <div className="flex-1 p-6 space-y-6">
                             {/* Title */}
-                            <div>
-                                {isEditingTitle ? (
-                                    <Input
-                                        value={title}
-                                        onChange={(e) => setTitle(e.target.value)}
-                                        onBlur={handleSaveTitle}
-                                        onKeyDown={(e) => e.key === "Enter" && handleSaveTitle()}
-                                        autoFocus
-                                        className="text-xl font-semibold"
-                                    />
-                                ) : (
-                                    <h2
-                                        onClick={() => setIsEditingTitle(true)}
-                                        className="text-xl font-semibold cursor-pointer hover:bg-muted/50 px-2 py-1 -mx-2 rounded"
-                                    >
-                                        ○ {title}
-                                    </h2>
-                                )}
+                            <div className="flex items-start gap-3">
+                                {/* Complete Task Checkbox */}
+                                <button
+                                    onClick={async () => {
+                                        const newCompleted = !isCompleted;
+                                        setIsCompleted(newCompleted);
+                                        await updateTask.mutateAsync({ id: task.id, is_completed: newCompleted });
+                                    }}
+                                    className={cn(
+                                        "mt-1 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all shrink-0",
+                                        isCompleted
+                                            ? "bg-green-500 border-green-500 text-white"
+                                            : "border-muted-foreground/50 hover:border-green-500 hover:bg-green-50"
+                                    )}
+                                    title={isCompleted ? "Marcar como pendiente" : "Marcar como completada"}
+                                >
+                                    {isCompleted && (
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    )}
+                                </button>
+
+                                <div className="flex-1">
+                                    {isEditingTitle ? (
+                                        <Input
+                                            value={title}
+                                            onChange={(e) => setTitle(e.target.value)}
+                                            onBlur={handleSaveTitle}
+                                            onKeyDown={(e) => e.key === "Enter" && handleSaveTitle()}
+                                            autoFocus
+                                            className="text-xl font-semibold"
+                                        />
+                                    ) : (
+                                        <h2
+                                            onClick={() => setIsEditingTitle(true)}
+                                            className={cn(
+                                                "text-xl font-semibold cursor-pointer hover:bg-muted/50 px-2 py-1 -mx-2 rounded",
+                                                isCompleted && "line-through text-muted-foreground"
+                                            )}
+                                        >
+                                            {title}
+                                        </h2>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Action Buttons */}
@@ -631,42 +672,192 @@ export function TaskDetailModal({ task, isOpen, onClose, isAdmin }: TaskDetailMo
                             </div>
                         </div>
 
-                        {/* Sidebar - Activity */}
-                        <div className="w-72 border-l p-4 bg-muted/30">
+                        {/* Sidebar - Comments & Activity */}
+                        <div className="w-80 border-l p-4 bg-muted/30 flex flex-col max-h-full">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-sm font-medium flex items-center gap-2">
                                     <MessageSquare className="h-4 w-4" />
                                     Comentarios y Actividad
                                 </h3>
-                                <Button variant="ghost" size="sm" className="text-xs">
-                                    Mostrar detalles
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-xs"
+                                    onClick={() => setShowActivity(!showActivity)}
+                                >
+                                    {showActivity ? "Solo comentarios" : "Mostrar todo"}
                                 </Button>
                             </div>
 
-                            <Input placeholder="Escribe un comentario..." className="mb-4" />
-
-                            <div className="space-y-3 text-sm">
+                            {/* Comment Input */}
+                            <div className="mb-4">
                                 <div className="flex gap-2">
-                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-xs font-medium">
-                                        🐱
-                                    </div>
-                                    <div>
-                                        <p className="text-xs">
-                                            <span className="font-medium">Usuario</span> ha añadido esta tarjeta a{" "}
-                                            <span className="text-primary">{currentColumn?.icon} {currentColumn?.title}</span>
-                                        </p>
-                                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                            <Clock className="h-3 w-3" />
-                                            {new Date(task.created_at).toLocaleDateString("es-ES", {
-                                                day: "numeric",
-                                                month: "short",
-                                                year: "numeric",
-                                                hour: "2-digit",
-                                                minute: "2-digit",
-                                            })}
-                                        </p>
-                                    </div>
+                                    <Input
+                                        value={newComment}
+                                        onChange={(e) => setNewComment(e.target.value)}
+                                        placeholder="Escribe un comentario..."
+                                        className="flex-1"
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter" && !e.shiftKey && newComment.trim()) {
+                                                e.preventDefault();
+                                                createComment.mutate({ taskId: task.id, content: newComment });
+                                                setNewComment("");
+                                            }
+                                        }}
+                                    />
+                                    <Button
+                                        size="sm"
+                                        onClick={() => {
+                                            if (newComment.trim()) {
+                                                createComment.mutate({ taskId: task.id, content: newComment });
+                                                setNewComment("");
+                                            }
+                                        }}
+                                        disabled={!newComment.trim() || createComment.isPending}
+                                    >
+                                        {createComment.isPending ? "..." : "Enviar"}
+                                    </Button>
                                 </div>
+                            </div>
+
+                            {/* Comments & Activity List */}
+                            <div className="flex-1 overflow-y-auto space-y-3 text-sm">
+                                {/* Comments */}
+                                {comments.map((comment) => (
+                                    <div key={comment.id} className="flex gap-2 group">
+                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-xs font-medium shrink-0">
+                                            {comment.user?.full_name?.charAt(0)?.toUpperCase() || "U"}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-medium text-xs">
+                                                    {comment.user?.full_name || "Usuario"}
+                                                </span>
+                                                <span className="text-xs text-muted-foreground">
+                                                    {new Date(comment.created_at).toLocaleDateString("es-ES", {
+                                                        day: "numeric",
+                                                        month: "short",
+                                                        hour: "2-digit",
+                                                        minute: "2-digit",
+                                                    })}
+                                                </span>
+                                                <div className="opacity-0 group-hover:opacity-100 ml-auto flex gap-1">
+                                                    <button
+                                                        className="text-muted-foreground hover:text-primary"
+                                                        onClick={() => {
+                                                            setEditingCommentId(comment.id);
+                                                            setEditingCommentContent(comment.content);
+                                                        }}
+                                                    >
+                                                        <Edit2 className="h-3 w-3" />
+                                                    </button>
+                                                    <button
+                                                        className="text-muted-foreground hover:text-destructive"
+                                                        onClick={() => deleteComment.mutate({ id: comment.id, taskId: task.id })}
+                                                    >
+                                                        <Trash2 className="h-3 w-3" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            {editingCommentId === comment.id ? (
+                                                <div className="mt-1 space-y-2">
+                                                    <Textarea
+                                                        value={editingCommentContent}
+                                                        onChange={(e) => setEditingCommentContent(e.target.value)}
+                                                        className="text-sm min-h-[60px]"
+                                                        autoFocus
+                                                    />
+                                                    <div className="flex gap-2">
+                                                        <Button
+                                                            size="sm"
+                                                            onClick={() => {
+                                                                updateComment.mutate({
+                                                                    id: comment.id,
+                                                                    taskId: task.id,
+                                                                    content: editingCommentContent,
+                                                                });
+                                                                setEditingCommentId(null);
+                                                            }}
+                                                            disabled={!editingCommentContent.trim()}
+                                                        >
+                                                            Guardar
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            onClick={() => setEditingCommentId(null)}
+                                                        >
+                                                            Cancelar
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <p className="text-sm mt-1 bg-background rounded-lg p-2 border">
+                                                    {comment.content}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+
+                                {/* Activity (if enabled) */}
+                                {showActivity && activities.map((activity) => (
+                                    <div key={activity.id} className="flex gap-2 opacity-70">
+                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center text-white text-xs font-medium shrink-0">
+                                            {activity.user?.full_name?.charAt(0)?.toUpperCase() || "U"}
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="text-xs">
+                                                <span className="font-medium">{activity.user?.full_name || "Usuario"}</span>
+                                                {" "}
+                                                {activity.activity_type === "created" && "creó esta tarjeta"}
+                                                {activity.activity_type === "status_changed" && (
+                                                    <>movió a <span className="text-primary">{activity.metadata?.new_status}</span></>
+                                                )}
+                                                {activity.activity_type === "comment_added" && "añadió un comentario"}
+                                                {activity.activity_type === "checklist_added" && "añadió un checklist"}
+                                                {activity.activity_type === "checklist_completed" && "completó un checklist"}
+                                                {activity.activity_type === "attachment_added" && "adjuntó un archivo"}
+                                                {activity.activity_type === "due_date_set" && "estableció fecha de vencimiento"}
+                                                {activity.activity_type === "label_changed" && "cambió la etiqueta"}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                                                <Clock className="h-3 w-3" />
+                                                {new Date(activity.created_at).toLocaleDateString("es-ES", {
+                                                    day: "numeric",
+                                                    month: "short",
+                                                    hour: "2-digit",
+                                                    minute: "2-digit",
+                                                })}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+
+                                {/* Default: Task creation */}
+                                {comments.length === 0 && activities.length === 0 && (
+                                    <div className="flex gap-2 opacity-70">
+                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-xs font-medium">
+                                            🐱
+                                        </div>
+                                        <div>
+                                            <p className="text-xs">
+                                                <span className="font-medium">Sistema</span> creó esta tarjeta en{" "}
+                                                <span className="text-primary">{currentColumn?.icon} {currentColumn?.title}</span>
+                                            </p>
+                                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                                <Clock className="h-3 w-3" />
+                                                {new Date(task.created_at).toLocaleDateString("es-ES", {
+                                                    day: "numeric",
+                                                    month: "short",
+                                                    year: "numeric",
+                                                    hour: "2-digit",
+                                                    minute: "2-digit",
+                                                })}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
