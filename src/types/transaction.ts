@@ -61,9 +61,9 @@ export const TRANSACTION_CATEGORIES = {
 
 export function formatCurrency(
   amount: number,
-  currency: string = "EUR"
+  currency: string = "PEN"
 ): string {
-  return new Intl.NumberFormat("es-ES", {
+  return new Intl.NumberFormat("es-PE", {
     style: "currency",
     currency,
     minimumFractionDigits: 0,
@@ -73,10 +73,10 @@ export function formatCurrency(
 
 export function formatCompactCurrency(
   amount: number,
-  currency: string = "EUR"
+  currency: string = "PEN"
 ): string {
   if (amount >= 1000) {
-    return new Intl.NumberFormat("es-ES", {
+    return new Intl.NumberFormat("es-PE", {
       style: "currency",
       currency,
       notation: "compact",

@@ -20,20 +20,27 @@ interface ProjectCardProps {
 }
 
 const statusVariants: Record<ProjectStatus, string> = {
-  draft: "bg-secondary text-secondary-foreground",
-  active: "bg-primary/10 text-primary border-primary/20",
-  on_hold: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200",
-  completed:
-    "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200",
-  cancelled: "bg-destructive/10 text-destructive",
+  inicio: "bg-secondary text-secondary-foreground",
+  desarrollo: "bg-primary/10 text-primary border-primary/20",
+  bloqueado: "bg-destructive/10 text-destructive",
+  testing: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200",
+  entregado: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200",
 };
 
 const statusBarColors: Record<ProjectStatus, string> = {
-  draft: "bg-muted-foreground/30",
-  active: "bg-primary",
-  on_hold: "bg-amber-500",
-  completed: "bg-emerald-500",
-  cancelled: "bg-destructive/50",
+  inicio: "bg-muted-foreground/30",
+  desarrollo: "bg-primary",
+  bloqueado: "bg-destructive",
+  testing: "bg-amber-500",
+  entregado: "bg-emerald-500",
+};
+
+const cardBackgroundColors: Record<ProjectStatus, string> = {
+  inicio: "bg-slate-100 dark:bg-slate-800/50",
+  desarrollo: "bg-blue-100 dark:bg-blue-950/40",
+  bloqueado: "bg-red-100 dark:bg-red-900/40",
+  testing: "bg-amber-100 dark:bg-amber-900/40",
+  entregado: "bg-emerald-100 dark:bg-emerald-900/40",
 };
 
 export function ProjectCard({ project, className }: ProjectCardProps) {
@@ -46,6 +53,7 @@ export function ProjectCard({ project, className }: ProjectCardProps) {
           "group relative overflow-hidden transition-all duration-200",
           "hover:border-primary/20 hover:shadow-md",
           "cursor-pointer",
+          cardBackgroundColors[project.status],
           className
         )}
       >

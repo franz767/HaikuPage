@@ -17,25 +17,31 @@ export type Database = {
       profiles: {
         Row: {
           id: string;
-          role: "admin" | "user";
+          role: "admin" | "colaborador" | "cliente" | "user";
           full_name: string;
           avatar_url: string | null;
+          client_id: string | null;
+          current_session_id: string | null;
           created_at: string;
           updated_at: string;
         };
         Insert: {
           id: string;
-          role?: "admin" | "user";
+          role?: "admin" | "colaborador" | "cliente" | "user";
           full_name: string;
           avatar_url?: string | null;
+          client_id?: string | null;
+          current_session_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
           id?: string;
-          role?: "admin" | "user";
+          role?: "admin" | "colaborador" | "cliente" | "user";
           full_name?: string;
           avatar_url?: string | null;
+          client_id?: string | null;
+          current_session_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -45,6 +51,13 @@ export type Database = {
             columns: ["id"];
             isOneToOne: true;
             referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "profiles_client_id_fkey";
+            columns: ["client_id"];
+            isOneToOne: false;
+            referencedRelation: "clients";
             referencedColumns: ["id"];
           }
         ];
@@ -159,6 +172,8 @@ export type Database = {
           description: string | null;
           project_id: string | null;
           date: string;
+          status: "approved" | "pending";
+          receipt_url: string | null;
           created_at: string;
           updated_at: string;
           created_by: string | null;
@@ -171,6 +186,8 @@ export type Database = {
           description?: string | null;
           project_id?: string | null;
           date?: string;
+          status?: "approved" | "pending";
+          receipt_url?: string | null;
           created_at?: string;
           updated_at?: string;
           created_by?: string | null;
@@ -183,6 +200,8 @@ export type Database = {
           description?: string | null;
           project_id?: string | null;
           date?: string;
+          status?: "approved" | "pending";
+          receipt_url?: string | null;
           created_at?: string;
           updated_at?: string;
           created_by?: string | null;
@@ -330,9 +349,10 @@ export type Database = {
       };
     };
     Enums: {
-      user_role: "admin" | "user";
+      user_role: "admin" | "colaborador" | "cliente" | "user";
       project_status: "inicio" | "desarrollo" | "bloqueado" | "testing" | "entregado";
       transaction_type: "income" | "expense";
+      transaction_status: "approved" | "pending";
     };
     CompositeTypes: {
       [_ in never]: never;

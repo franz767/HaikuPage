@@ -3,15 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Mail, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useCreateClient } from "@/hooks/use-clients";
+import { inviteClient } from "@/actions/clients";
 
 export default function NewClientPage() {
   const router = useRouter();
-  const createClient = useCreateClient();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -21,6 +20,8 @@ export default function NewClientPage() {
     notes: "",
   });
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,19 +32,67 @@ export default function NewClientPage() {
       return;
     }
 
+    if (!formData.email.trim()) {
+      setError("El email es requerido para enviar la invitación");
+      return;
+    }
+
+    setIsLoading(true);
+
     try {
-      await createClient.mutateAsync({
-        name: formData.name,
-        company: formData.company || undefined,
-        email: formData.email || undefined,
-        phone: formData.phone || undefined,
-        notes: formData.notes || undefined,
+      const result = await inviteClient({
+        name: formData.name.trim(),
+        company: formData.company.trim() || undefined,
+        email: formData.email.trim(),
+        phone: formData.phone.trim() || undefined,
+        notes: formData.notes.trim() || undefined,
       });
-      router.push("/clients");
+
+      if (!result.success) {
+        setError(result.error || "Error al crear cliente");
+        return;
+      }
+
+      setSuccess(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al crear cliente");
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  // Pantalla de éxito
+  if (success) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6">
+        <Card>
+          <CardContent className="pt-8 pb-8">
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center">
+                <CheckCircle className="h-8 w-8 text-green-600" />
+              </div>
+              <h2 className="text-2xl font-semibold">¡Invitación enviada!</h2>
+              <p className="text-muted-foreground max-w-md">
+                Se ha enviado un email de invitación a <strong>{formData.email}</strong>.
+                El cliente podrá crear su contraseña y acceder al sistema una vez que confirme su cuenta.
+              </p>
+              <div className="flex gap-3 pt-4">
+                <Button variant="outline" onClick={() => {
+                  setSuccess(false);
+                  setFormData({ name: "", company: "", email: "", phone: "", notes: "" });
+                }}>
+                  Invitar otro cliente
+                </Button>
+                <Button onClick={() => router.push("/clients")}>
+                  Volver a clientes
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -59,7 +108,7 @@ export default function NewClientPage() {
             Nuevo Cliente
           </h1>
           <p className="text-muted-foreground">
-            Agrega un nuevo cliente a tu agencia
+            Invita un nuevo cliente a tu agencia
           </p>
         </div>
       </div>
@@ -67,7 +116,13 @@ export default function NewClientPage() {
       {/* Form */}
       <Card>
         <CardHeader>
-          <CardTitle>Informacion del Cliente</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Mail className="h-5 w-5" />
+            Información del Cliente
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Se enviará un email de invitación al cliente para que cree su cuenta.
+          </p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -108,7 +163,7 @@ export default function NewClientPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label htmlFor="email" className="text-sm font-medium">
-                  Email
+                  Email * <span className="text-muted-foreground font-normal">(para invitación)</span>
                 </label>
                 <Input
                   id="email"
@@ -118,12 +173,13 @@ export default function NewClientPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })
                   }
+                  required
                 />
               </div>
 
               <div className="space-y-2">
                 <label htmlFor="phone" className="text-sm font-medium">
-                  Telefono
+                  Teléfono
                 </label>
                 <Input
                   id="phone"
@@ -160,11 +216,12 @@ export default function NewClientPage() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={createClient.isPending}>
-                {createClient.isPending && (
+              <Button type="submit" disabled={isLoading}>
+                {isLoading && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                Crear Cliente
+                <Mail className="mr-2 h-4 w-4" />
+                Enviar Invitación
               </Button>
             </div>
           </form>

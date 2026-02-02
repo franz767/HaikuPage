@@ -62,6 +62,7 @@ export default function ProjectDetailPage({ params }: PageProps) {
   const [selectedInstallment, setSelectedInstallment] = useState<PaymentInstallment | null>(null);
 
   const isAdmin = profile?.role === "admin";
+  const isClientUser = profile?.role === "cliente";
 
   // Obtener IDs de admins para notificaciones de pago
   const adminUserIds = allUsers?.filter((u) => u.role === "admin").map((u) => u.id) || [];
@@ -69,8 +70,11 @@ export default function ProjectDetailPage({ params }: PageProps) {
   // Verificar si el usuario actual es miembro del proyecto
   const isMember = members?.some((m) => m.user_id === profile?.id);
 
-  // Puede pagar: si es miembro O si es admin
-  const canPay = isMember || isAdmin;
+  // Puede pagar: si es miembro O si es admin (NO clientes)
+  const canPay = (isMember || isAdmin) && !isClientUser;
+
+  // Puede editar estado: si es miembro y NO es cliente
+  const canChangeStatus = isMember && !isClientUser;
 
   // Helper para obtener el pago aprobado de una cuota
   const getApprovedPayment = (installmentNumber: number) => {
@@ -175,15 +179,15 @@ export default function ProjectDetailPage({ params }: PageProps) {
                 <h1 className="text-2xl font-semibold tracking-tight">
                   {project.name}
                 </h1>
-                {/* Badge de estado - clickeable para miembros */}
+                {/* Badge de estado - clickeable para miembros (no clientes) */}
                 <div className="relative">
                   <button
-                    onClick={() => isMember && setShowStatusSelector(!showStatusSelector)}
-                    disabled={!isMember || updateProject.isPending}
+                    onClick={() => canChangeStatus && setShowStatusSelector(!showStatusSelector)}
+                    disabled={!canChangeStatus || updateProject.isPending}
                     className={cn(
                       "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors",
-                      isMember && "cursor-pointer hover:opacity-80",
-                      !isMember && "cursor-default",
+                      canChangeStatus && "cursor-pointer hover:opacity-80",
+                      !canChangeStatus && "cursor-default",
                       statusConfig.color === "default" &&
                       "bg-primary/10 text-primary border-primary/20",
                       statusConfig.color === "secondary" &&
@@ -200,7 +204,7 @@ export default function ProjectDetailPage({ params }: PageProps) {
                       <Loader2 className="h-3 w-3 animate-spin" />
                     ) : null}
                     {statusConfig.label}
-                    {isMember && <ChevronDown className="h-3 w-3" />}
+                    {canChangeStatus && <ChevronDown className="h-3 w-3" />}
                   </button>
                   {showStatusSelector && (
                     <div className="absolute left-0 top-full mt-2 w-48 bg-background border rounded-md shadow-lg z-10 py-1">
@@ -270,7 +274,7 @@ export default function ProjectDetailPage({ params }: PageProps) {
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <span>📋</span> Tablero de Tareas
           </h2>
-          <KanbanBoard projectId={id} isAdmin={isAdmin} />
+          <KanbanBoard projectId={id} isAdmin={isAdmin} readOnly={isClientUser} />
         </div>
       </div>
 
@@ -339,9 +343,9 @@ export default function ProjectDetailPage({ params }: PageProps) {
               <CardContent>
                 <p className="text-lg font-semibold">
                   {project.budget
-                    ? new Intl.NumberFormat("es-ES", {
+                    ? new Intl.NumberFormat("es-PE", {
                       style: "currency",
-                      currency: "EUR",
+                      currency: "PEN",
                     }).format(Number(project.budget))
                     : "Sin definir"}
                 </p>

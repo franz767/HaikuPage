@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
 import { Plus, TrendingUp, TrendingDown, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { FinancialOverview } from "@/components/dashboard/financial-overview";
 import { PendingPaymentsTable } from "@/components/payments/PendingPaymentsTable";
 import { AllPaymentsTable } from "@/components/payments/AllPaymentsTable";
-import { useFinancialChartData, useFinancialSummary } from "@/hooks/use-transactions";
+import { useTransactions } from "@/hooks/use-transactions";
+import { useAllPayments } from "@/hooks/use-payment-submissions";
 import { useCurrentProfile } from "@/hooks/use-profile";
 import { formatCurrency } from "@/types/transaction";
 import { isAdmin } from "@/types/profile";
@@ -16,11 +18,79 @@ import { cn } from "@/lib/utils";
 
 export default function FinancesPage() {
   const { data: profile } = useCurrentProfile();
-  const { data: chartData, isLoading: chartLoading } = useFinancialChartData(6);
-  const { data: summary, isLoading: summaryLoading } = useFinancialSummary();
+  const { data: transactions = [], isLoading: transactionsLoading } = useTransactions();
+  const { data: payments = [], isLoading: paymentsLoading } = useAllPayments();
 
-  const isLoading = chartLoading || summaryLoading;
+  const isLoading = transactionsLoading || paymentsLoading;
   const userIsAdmin = isAdmin(profile);
+
+  // Calcular resumen combinando transacciones + pagos de cuotas aprobados
+  const summary = useMemo(() => {
+    // Ingresos de transacciones
+    const transactionIncome = transactions
+      .filter((t) => t.type === "income")
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+
+    // Gastos de transacciones
+    const transactionExpense = transactions
+      .filter((t) => t.type === "expense")
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+
+    // Ingresos de pagos de cuotas aprobados
+    const approvedPaymentsIncome = payments
+      .filter((p) => p.status === "approved")
+      .reduce((sum, p) => sum + Number(p.amount), 0);
+
+    const totalIncome = transactionIncome + approvedPaymentsIncome;
+    const totalExpense = transactionExpense;
+    const netProfit = totalIncome - totalExpense;
+
+    return { totalIncome, totalExpense, netProfit };
+  }, [transactions, payments]);
+
+  // Crear datos del grafico combinando transacciones + pagos aprobados
+  const combinedChartData = useMemo(() => {
+    const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+    const monthlyData: Record<string, { income: number; expense: number }> = {};
+
+    // Agregar transacciones
+    transactions.forEach((t) => {
+      const monthKey = t.date.slice(0, 7); // "2025-01"
+      if (!monthlyData[monthKey]) {
+        monthlyData[monthKey] = { income: 0, expense: 0 };
+      }
+      if (t.type === "income") {
+        monthlyData[monthKey].income += Number(t.amount);
+      } else {
+        monthlyData[monthKey].expense += Number(t.amount);
+      }
+    });
+
+    // Agregar pagos de cuotas aprobados como ingresos
+    payments
+      .filter((p) => p.status === "approved")
+      .forEach((p) => {
+        const date = p.reviewed_at || p.submitted_at;
+        const monthKey = date.slice(0, 7);
+        if (!monthlyData[monthKey]) {
+          monthlyData[monthKey] = { income: 0, expense: 0 };
+        }
+        monthlyData[monthKey].income += Number(p.amount);
+      });
+
+    // Convertir a formato de grafico y ordenar
+    return Object.entries(monthlyData)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, value]) => {
+        const [year, month] = key.split("-");
+        return {
+          date: `${monthNames[parseInt(month) - 1]} ${year.slice(2)}`,
+          income: value.income,
+          expense: value.expense,
+          net: value.income - value.expense,
+        };
+      });
+  }, [transactions, payments]);
 
   return (
     <div className="space-y-6">
@@ -111,10 +181,10 @@ export default function FinancesPage() {
       </div>
 
       {/* Chart */}
-      {chartLoading ? (
+      {isLoading ? (
         <Skeleton className="h-[350px]" />
-      ) : chartData && chartData.length > 0 ? (
-        <FinancialOverview data={chartData} />
+      ) : combinedChartData && combinedChartData.length > 0 ? (
+        <FinancialOverview data={combinedChartData} />
       ) : (
         <Card>
           <CardContent className="flex h-[350px] items-center justify-center">

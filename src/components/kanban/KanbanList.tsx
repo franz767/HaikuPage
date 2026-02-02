@@ -20,9 +20,10 @@ interface KanbanListProps {
     tasks: Task[];
     projectId: string;
     isAdmin?: boolean;
-    onDragStart: (e: React.DragEvent, taskId: string) => void;
-    onDragOver: (e: React.DragEvent) => void;
-    onDrop: (e: React.DragEvent, columnId: TaskStatus) => void;
+    readOnly?: boolean;
+    onDragStart?: (e: React.DragEvent, taskId: string) => void;
+    onDragOver?: (e: React.DragEvent) => void;
+    onDrop?: (e: React.DragEvent, columnId: TaskStatus) => void;
 }
 
 export function KanbanList({
@@ -30,6 +31,7 @@ export function KanbanList({
     tasks,
     projectId,
     isAdmin,
+    readOnly = false,
     onDragStart,
     onDragOver,
     onDrop,
@@ -77,8 +79,8 @@ export function KanbanList({
                 "w-72 shrink-0 rounded-xl p-3 flex flex-col max-h-[calc(100vh-300px)]",
                 column.color
             )}
-            onDragOver={onDragOver}
-            onDrop={(e) => onDrop(e, column.id)}
+            onDragOver={!readOnly && onDragOver ? onDragOver : undefined}
+            onDrop={!readOnly && onDrop ? (e) => onDrop(e, column.id) : undefined}
         >
             {/* Header */}
             <div className="flex items-center justify-between mb-3">
@@ -100,56 +102,59 @@ export function KanbanList({
                     <KanbanCard
                         key={task.id}
                         task={task}
-                        onDragStart={onDragStart}
+                        onDragStart={!readOnly ? onDragStart : undefined}
                         isAdmin={isAdmin}
+                        readOnly={readOnly}
                     />
                 ))}
             </div>
 
-            {/* Add Task */}
-            {isAdding ? (
-                <div className="mt-2 space-y-2 bg-background rounded-lg p-3 shadow-sm border">
-                    <Input
-                        value={newTaskTitle}
-                        onChange={(e) => setNewTaskTitle(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Título de la tarjeta..."
-                        autoFocus
-                        className="text-sm"
-                    />
-                    <Textarea
-                        value={newTaskDescription}
-                        onChange={(e) => setNewTaskDescription(e.target.value)}
-                        placeholder="Descripción (opcional)..."
-                        className="text-sm min-h-[60px] resize-none"
-                        rows={2}
-                    />
-                    <div className="flex gap-2">
-                        <Button
-                            size="sm"
-                            onClick={handleAddTask}
-                            disabled={createTask.isPending || !newTaskTitle.trim()}
-                        >
-                            {createTask.isPending ? "Añadiendo..." : "Añadir"}
-                        </Button>
-                        <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={handleCancel}
-                        >
-                            Cancelar
-                        </Button>
+            {/* Add Task - oculto en modo readOnly */}
+            {!readOnly && (
+                isAdding ? (
+                    <div className="mt-2 space-y-2 bg-background rounded-lg p-3 shadow-sm border">
+                        <Input
+                            value={newTaskTitle}
+                            onChange={(e) => setNewTaskTitle(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            placeholder="Título de la tarjeta..."
+                            autoFocus
+                            className="text-sm"
+                        />
+                        <Textarea
+                            value={newTaskDescription}
+                            onChange={(e) => setNewTaskDescription(e.target.value)}
+                            placeholder="Descripción (opcional)..."
+                            className="text-sm min-h-[60px] resize-none"
+                            rows={2}
+                        />
+                        <div className="flex gap-2">
+                            <Button
+                                size="sm"
+                                onClick={handleAddTask}
+                                disabled={createTask.isPending || !newTaskTitle.trim()}
+                            >
+                                {createTask.isPending ? "Añadiendo..." : "Añadir"}
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={handleCancel}
+                            >
+                                Cancelar
+                            </Button>
+                        </div>
                     </div>
-                </div>
-            ) : (
-                <Button
-                    variant="ghost"
-                    className="mt-2 justify-start text-muted-foreground hover:text-foreground"
-                    onClick={() => setIsAdding(true)}
-                >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Añadir una tarjeta
-                </Button>
+                ) : (
+                    <Button
+                        variant="ghost"
+                        className="mt-2 justify-start text-muted-foreground hover:text-foreground"
+                        onClick={() => setIsAdding(true)}
+                    >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Añadir una tarjeta
+                    </Button>
+                )
             )}
         </div>
     );

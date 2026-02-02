@@ -23,6 +23,10 @@ export function isUser(profile: Profile | null | undefined): boolean {
   return profile?.role === "user";
 }
 
+export function isClient(profile: Profile | null | undefined): boolean {
+  return profile?.role === "cliente" || profile?.role === "user";
+}
+
 export function getInitials(fullName: string): string {
   return fullName
     .split(" ")
@@ -38,5 +42,7 @@ export function getInitials(fullName: string): string {
 
 export const USER_ROLES = {
   admin: { label: "Administrador", description: "Acceso total al sistema" },
-  user: { label: "Colaborador", description: "Acceso limitado a proyectos asignados" },
+  colaborador: { label: "Colaborador", description: "Colaborador interno de la agencia" },
+  user: { label: "Cliente", description: "Cliente (rol por defecto)" },
+  cliente: { label: "Cliente", description: "Solo puede ver el progreso de sus proyectos" },
 } as const;

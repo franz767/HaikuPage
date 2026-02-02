@@ -3,7 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { PrefetchData } from "@/components/layout/prefetch-data";
-import { isAdmin } from "@/types/profile";
+import { SessionValidator } from "@/components/auth/session-validator";
+import { isAdmin, isClient } from "@/types/profile";
 
 export default async function DashboardLayout({
   children,
@@ -33,14 +34,18 @@ export default async function DashboardLayout({
   }
 
   const userIsAdmin = isAdmin(profile);
+  const userIsClient = isClient(profile);
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Validar sesión única para admins */}
+      <SessionValidator />
+
       {/* Prefetch datos críticos en background */}
       <PrefetchData />
 
       {/* Sidebar */}
-      <Sidebar isAdmin={userIsAdmin} />
+      <Sidebar isAdmin={userIsAdmin} isClient={userIsClient} />
 
       {/* Main content */}
       <div className="pl-64">

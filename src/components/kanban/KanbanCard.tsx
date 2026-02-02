@@ -12,12 +12,13 @@ import { cn } from "@/lib/utils";
 
 interface KanbanCardProps {
     task: Task;
-    onDragStart: (e: React.DragEvent, taskId: string) => void;
+    onDragStart?: (e: React.DragEvent, taskId: string) => void;
     onDragEnd?: () => void;
     isAdmin?: boolean;
+    readOnly?: boolean;
 }
 
-export function KanbanCard({ task, onDragStart, onDragEnd, isAdmin }: KanbanCardProps) {
+export function KanbanCard({ task, onDragStart, onDragEnd, isAdmin, readOnly = false }: KanbanCardProps) {
     const [showMenu, setShowMenu] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
@@ -60,6 +61,7 @@ export function KanbanCard({ task, onDragStart, onDragEnd, isAdmin }: KanbanCard
     };
 
     const handleDragStart = (e: React.DragEvent) => {
+        if (readOnly || !onDragStart) return;
         setIsDragging(true);
         onDragStart(e, task.id);
     };
@@ -94,14 +96,15 @@ export function KanbanCard({ task, onDragStart, onDragEnd, isAdmin }: KanbanCard
                 whileHover={{ y: -2 }}
             >
                 <Card
-                    draggable
-                    onDragStart={handleDragStart}
-                    onDragEnd={handleDragEnd}
+                    draggable={!readOnly}
+                    onDragStart={!readOnly ? handleDragStart : undefined}
+                    onDragEnd={!readOnly ? handleDragEnd : undefined}
                     onClick={handleCardClick}
                     className={cn(
                         "cursor-pointer bg-background hover:shadow-md transition-colors group",
                         "border-l-4 hover:ring-2 hover:ring-primary/20",
-                        isDragging && "opacity-90"
+                        isDragging && "opacity-90",
+                        readOnly && "cursor-default"
                     )}
                     style={{
                         borderLeftColor: task.label_color || "transparent",
@@ -121,24 +124,39 @@ export function KanbanCard({ task, onDragStart, onDragEnd, isAdmin }: KanbanCard
                         {/* Title & Menu */}
                         <div className="flex items-start justify-between gap-2 relative">
                             <div className="flex-1 min-w-0 flex items-start gap-2">
-                                {/* Completed Check - Clickable */}
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        updateTask.mutate({ id: task.id, is_completed: !task.is_completed });
-                                    }}
-                                    className={cn(
-                                        "w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all",
-                                        task.is_completed
-                                            ? "bg-green-500 border-green-500 text-white"
-                                            : "border-muted-foreground/40 hover:border-green-500 hover:bg-green-50"
-                                    )}
-                                    title={task.is_completed ? "Marcar como pendiente" : "Marcar como completada"}
-                                >
-                                    {task.is_completed && (
-                                        <Check className="h-3 w-3" strokeWidth={3} />
-                                    )}
-                                </button>
+                                {/* Completed Check - Clickable (no en readOnly) */}
+                                {readOnly ? (
+                                    <div
+                                        className={cn(
+                                            "w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5",
+                                            task.is_completed
+                                                ? "bg-green-500 border-green-500 text-white"
+                                                : "border-muted-foreground/40"
+                                        )}
+                                    >
+                                        {task.is_completed && (
+                                            <Check className="h-3 w-3" strokeWidth={3} />
+                                        )}
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            updateTask.mutate({ id: task.id, is_completed: !task.is_completed });
+                                        }}
+                                        className={cn(
+                                            "w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all",
+                                            task.is_completed
+                                                ? "bg-green-500 border-green-500 text-white"
+                                                : "border-muted-foreground/40 hover:border-green-500 hover:bg-green-50"
+                                        )}
+                                        title={task.is_completed ? "Marcar como pendiente" : "Marcar como completada"}
+                                    >
+                                        {task.is_completed && (
+                                            <Check className="h-3 w-3" strokeWidth={3} />
+                                        )}
+                                    </button>
+                                )}
                                 <p className={cn(
                                     "text-sm font-medium leading-snug",
                                     task.is_completed && "line-through text-muted-foreground"
@@ -151,19 +169,21 @@ export function KanbanCard({ task, onDragStart, onDragEnd, isAdmin }: KanbanCard
                                     </p>
                                 )}
                             </div>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setShowMenu(!showMenu);
-                                }}
-                            >
-                                <MoreHorizontal className="h-3 w-3" />
-                            </Button>
+                            {!readOnly && (
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowMenu(!showMenu);
+                                    }}
+                                >
+                                    <MoreHorizontal className="h-3 w-3" />
+                                </Button>
+                            )}
 
-                            {showMenu && (
+                            {showMenu && !readOnly && (
                                 <div className="absolute right-0 top-6 z-10 bg-background border rounded-md shadow-lg py-1 min-w-[120px]">
                                     <button
                                         className="w-full px-3 py-1.5 text-sm text-left hover:bg-muted flex items-center gap-2"

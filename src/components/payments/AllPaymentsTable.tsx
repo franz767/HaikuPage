@@ -1,7 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import { Eye, Loader2, FileText, CheckCircle, XCircle, Clock } from "lucide-react";
+import { useState, useMemo } from "react";
+import {
+  Eye,
+  Loader2,
+  FileText,
+  CheckCircle,
+  XCircle,
+  Clock,
+  TrendingUp,
+  TrendingDown,
+  Receipt,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,41 +32,116 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAllPayments } from "@/hooks/use-payment-submissions";
+import { useTransactions } from "@/hooks/use-transactions";
 import { getInitials } from "@/types/profile";
 import type { PaymentSubmissionWithRelations } from "@/types/payment-submission";
+import type { Transaction } from "@/types/transaction";
 
-type StatusFilter = "all" | "pending" | "approved" | "rejected";
+type TypeFilter = "all" | "payment" | "income" | "expense";
+
+// Tipo unificado para la tabla
+interface UnifiedRecord {
+  id: string;
+  type: "payment" | "income" | "expense";
+  typeLabel: string;
+  description: string;
+  amount: number;
+  date: Date;
+  status?: "pending" | "approved" | "rejected";
+  submitter?: {
+    full_name: string | null;
+    avatar_url: string | null;
+  } | null;
+  receiptUrl?: string;
+  projectName?: string;
+  clientName?: string;
+}
 
 const statusConfig = {
   pending: {
     label: "Pendiente",
     icon: Clock,
     variant: "secondary" as const,
-    color: "text-amber-600",
   },
   approved: {
     label: "Aprobado",
     icon: CheckCircle,
     variant: "default" as const,
-    color: "text-emerald-600",
   },
   rejected: {
     label: "Rechazado",
     icon: XCircle,
     variant: "destructive" as const,
-    color: "text-red-600",
   },
 };
 
-export function AllPaymentsTable() {
-  const { data: allPayments = [], isLoading } = useAllPayments();
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+const ITEMS_PER_PAGE = 10;
 
-  // Filtrar pagos por estado
-  const filteredPayments =
-    statusFilter === "all"
-      ? allPayments
-      : allPayments.filter((p) => p.status === statusFilter);
+export function AllPaymentsTable() {
+  const { data: allPayments = [], isLoading: paymentsLoading } = useAllPayments();
+  const { data: transactions = [], isLoading: transactionsLoading } = useTransactions();
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const isLoading = paymentsLoading || transactionsLoading;
+
+  // Unificar pagos y transacciones en un formato común
+  const unifiedRecords = useMemo(() => {
+    const records: UnifiedRecord[] = [];
+
+    // Agregar pagos de cuotas
+    allPayments.forEach((payment: PaymentSubmissionWithRelations) => {
+      records.push({
+        id: payment.id,
+        type: "payment",
+        typeLabel: `Pago cuota ${payment.installment_number}`,
+        description: payment.project?.name || "Proyecto",
+        amount: payment.amount,
+        date: new Date(payment.submitted_at),
+        status: payment.status,
+        submitter: payment.submitter,
+        receiptUrl: payment.receipt_url,
+        projectName: payment.project?.name,
+        clientName: payment.project?.client?.name,
+      });
+    });
+
+    // Agregar transacciones (ingresos y gastos)
+    transactions.forEach((transaction: Transaction) => {
+      records.push({
+        id: transaction.id,
+        type: transaction.type as "income" | "expense",
+        typeLabel: transaction.type === "income" ? "Ingreso" : "Gasto",
+        description: transaction.description || transaction.category,
+        amount: Number(transaction.amount),
+        date: new Date(transaction.date),
+        status: (transaction.status as "approved" | "pending") || "approved",
+        submitter: null,
+        receiptUrl: transaction.receipt_url || undefined,
+        projectName: transaction.category,
+      });
+    });
+
+    // Ordenar por fecha descendente
+    return records.sort((a, b) => b.date.getTime() - a.date.getTime());
+  }, [allPayments, transactions]);
+
+  // Filtrar por tipo
+  const filteredRecords = useMemo(() => {
+    if (typeFilter === "all") return unifiedRecords;
+    return unifiedRecords.filter((r) => r.type === typeFilter);
+  }, [unifiedRecords, typeFilter]);
+
+  // Calcular paginación
+  const totalPages = Math.ceil(filteredRecords.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedRecords = filteredRecords.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  // Resetear página cuando cambia el filtro
+  const handleFilterChange = (value: TypeFilter) => {
+    setTypeFilter(value);
+    setCurrentPage(1);
+  };
 
   // Loading state
   if (isLoading) {
@@ -65,7 +150,7 @@ export function AllPaymentsTable() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <FileText className="h-5 w-5" />
-            Historial de Pagos
+            Historial de Movimientos
           </CardTitle>
         </CardHeader>
         <CardContent className="flex items-center justify-center py-8">
@@ -76,18 +161,18 @@ export function AllPaymentsTable() {
   }
 
   // Empty state
-  if (allPayments.length === 0) {
+  if (unifiedRecords.length === 0) {
     return (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <FileText className="h-5 w-5" />
-            Historial de Pagos
+            Historial de Movimientos
           </CardTitle>
         </CardHeader>
         <CardContent className="py-8 text-center text-muted-foreground">
           <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-          <p>No hay registros de pagos</p>
+          <p>No hay registros de movimientos</p>
         </CardContent>
       </Card>
     );
@@ -99,25 +184,25 @@ export function AllPaymentsTable() {
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base">
             <FileText className="h-5 w-5" />
-            Historial de Pagos
+            Historial de Movimientos
             <Badge variant="outline" className="ml-2">
-              {filteredPayments.length}
+              {filteredRecords.length}
             </Badge>
           </CardTitle>
 
-          {/* Filtro por estado */}
+          {/* Filtro por tipo */}
           <Select
-            value={statusFilter}
-            onValueChange={(v) => setStatusFilter(v as StatusFilter)}
+            value={typeFilter}
+            onValueChange={(v) => handleFilterChange(v as TypeFilter)}
           >
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Filtrar por estado" />
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filtrar por tipo" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="pending">Pendientes</SelectItem>
-              <SelectItem value="approved">Aprobados</SelectItem>
-              <SelectItem value="rejected">Rechazados</SelectItem>
+              <SelectItem value="payment">Pagos de cuotas</SelectItem>
+              <SelectItem value="income">Ingresos</SelectItem>
+              <SelectItem value="expense">Gastos</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -128,8 +213,8 @@ export function AllPaymentsTable() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[60px]">N°</TableHead>
-                <TableHead>Colaborador</TableHead>
-                <TableHead>Proyecto</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Descripcion</TableHead>
                 <TableHead className="text-right">Monto</TableHead>
                 <TableHead>Fecha</TableHead>
                 <TableHead>Estatus</TableHead>
@@ -137,30 +222,80 @@ export function AllPaymentsTable() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredPayments.map((payment, index) => (
-                <PaymentRow
-                  key={payment.id}
-                  payment={payment}
-                  rowNumber={index + 1}
+              {paginatedRecords.map((record, index) => (
+                <RecordRow
+                  key={record.id}
+                  record={record}
+                  rowNumber={startIndex + index + 1}
                 />
               ))}
             </TableBody>
           </Table>
         </div>
+
+        {/* Paginación */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 mt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+            >
+              Anterior
+            </Button>
+            <span className="flex items-center gap-1 text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">{currentPage}</span>
+              <span>de</span>
+              <span className="font-medium text-foreground">{totalPages}</span>
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+            >
+              Siguiente
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
 }
 
-function PaymentRow({
-  payment,
+function RecordRow({
+  record,
   rowNumber,
 }: {
-  payment: PaymentSubmissionWithRelations;
+  record: UnifiedRecord;
   rowNumber: number;
 }) {
-  const status = statusConfig[payment.status];
-  const StatusIcon = status.icon;
+  // Icono y color según el tipo
+  const getTypeIcon = () => {
+    switch (record.type) {
+      case "payment":
+        return <Receipt className="h-4 w-4 text-blue-600" />;
+      case "income":
+        return <TrendingUp className="h-4 w-4 text-emerald-600" />;
+      case "expense":
+        return <TrendingDown className="h-4 w-4 text-red-500" />;
+    }
+  };
+
+  const getTypeBadgeVariant = () => {
+    switch (record.type) {
+      case "payment":
+        return "outline";
+      case "income":
+        return "default";
+      case "expense":
+        return "destructive";
+    }
+  };
+
+  const status = record.status ? statusConfig[record.status] : null;
+  const StatusIcon = status?.icon;
 
   return (
     <TableRow>
@@ -169,77 +304,101 @@ function PaymentRow({
         {rowNumber}
       </TableCell>
 
-      {/* Colaborador */}
+      {/* Tipo */}
       <TableCell>
-        <div className="flex items-center gap-3">
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={payment.submitter?.avatar_url || undefined} />
-            <AvatarFallback className="bg-primary/10 text-primary text-xs">
-              {getInitials(payment.submitter?.full_name || "?")}
-            </AvatarFallback>
-          </Avatar>
-          <span className="font-medium text-sm">
-            {payment.submitter?.full_name || "Usuario"}
-          </span>
+        <div className="flex items-center gap-2">
+          {getTypeIcon()}
+          <Badge variant={getTypeBadgeVariant() as "outline" | "default" | "destructive"} className="text-xs">
+            {record.typeLabel}
+          </Badge>
         </div>
       </TableCell>
 
-      {/* Proyecto */}
+      {/* Descripción */}
       <TableCell>
         <div>
-          <span className="font-medium text-sm">{payment.project?.name}</span>
-          {payment.project?.client?.name && (
-            <p className="text-xs text-muted-foreground">
-              {payment.project.client.name}
-            </p>
+          <span className="font-medium text-sm">{record.description}</span>
+          {record.clientName && (
+            <p className="text-xs text-muted-foreground">{record.clientName}</p>
+          )}
+          {record.submitter?.full_name && (
+            <div className="flex items-center gap-1.5 mt-1">
+              <Avatar className="h-5 w-5">
+                <AvatarImage src={record.submitter.avatar_url || undefined} />
+                <AvatarFallback className="bg-primary/10 text-primary text-[10px]">
+                  {getInitials(record.submitter.full_name || "?")}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-xs text-muted-foreground">
+                {record.submitter.full_name}
+              </span>
+            </div>
           )}
         </div>
       </TableCell>
 
       {/* Monto */}
-      <TableCell className="text-right font-semibold">
-        S/{" "}
-        {payment.amount.toLocaleString("es-PE", {
-          minimumFractionDigits: 2,
-        })}
+      <TableCell className="text-right">
+        <span
+          className={`font-semibold ${
+            record.status === "rejected" ? "text-muted-foreground" :
+            record.type === "expense" ? "text-red-500" :
+            (record.type === "income" || (record.type === "payment" && record.status === "approved")) ? "text-emerald-600" :
+            record.type === "payment" ? "text-blue-600" : ""
+          }`}
+        >
+          {record.status === "rejected" ? "" :
+           record.type === "expense" ? "- " :
+           (record.type === "income" || (record.type === "payment" && record.status === "approved")) ? "+ " : ""}
+          S/{" "}
+          {record.amount.toLocaleString("es-PE", {
+            minimumFractionDigits: 2,
+          })}
+        </span>
       </TableCell>
 
       {/* Fecha */}
       <TableCell>
         <div className="text-sm">
-          {new Date(payment.submitted_at).toLocaleDateString("es-PE", {
+          {record.date.toLocaleDateString("es-PE", {
             day: "2-digit",
             month: "short",
             year: "numeric",
           })}
         </div>
-        <div className="text-xs text-muted-foreground">
-          {new Date(payment.submitted_at).toLocaleTimeString("es-PE", {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </div>
+        {record.type === "payment" && (
+          <div className="text-xs text-muted-foreground">
+            {record.date.toLocaleTimeString("es-PE", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </div>
+        )}
       </TableCell>
 
       {/* Estatus */}
       <TableCell>
-        <Badge variant={status.variant} className="gap-1">
-          <StatusIcon className="h-3 w-3" />
-          {status.label}
-        </Badge>
+        {status && StatusIcon && (
+          <Badge variant={status.variant} className="gap-1">
+            <StatusIcon className="h-3 w-3" />
+            {status.label}
+          </Badge>
+        )}
       </TableCell>
 
       {/* Acciones */}
       <TableCell className="text-center">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => window.open(payment.receipt_url, "_blank")}
-          title="Ver comprobante"
-          className="h-8 w-8"
-        >
-          <Eye className="h-4 w-4" />
-        </Button>
+        {record.receiptUrl && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => window.open(record.receiptUrl, "_blank")}
+            title="Ver comprobante"
+            className="h-8 w-8"
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+        )}
       </TableCell>
     </TableRow>
   );

@@ -3,13 +3,13 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { NotificationDropdown } from "@/components/notifications/NotificationDropdown";
-import { getInitials } from "@/types/profile";
+import { getInitials, USER_ROLES, type UserRole } from "@/types/profile";
 
 interface HeaderProps {
   user: {
     full_name: string;
     avatar_url: string | null;
-    role: "admin" | "user";
+    role: UserRole;
   };
 }
 
@@ -40,7 +40,7 @@ export function Header({ user }: HeaderProps) {
               variant={user.role === "admin" ? "default" : "secondary"}
               className="text-[10px] mt-0.5"
             >
-              {user.role === "admin" ? "Admin" : "Colaborador"}
+              {USER_ROLES[user.role]?.label || "Usuario"}
             </Badge>
           </div>
           <Avatar className="h-9 w-9 ring-2 ring-background shadow-sm">

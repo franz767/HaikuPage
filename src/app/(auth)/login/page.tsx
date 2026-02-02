@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useFormStatus } from "react-dom";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,14 @@ function SubmitButton() {
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+
+  // Mostrar mensaje si la sesión fue cerrada por login en otro dispositivo
+  useEffect(() => {
+    if (searchParams.get("error") === "session_expired") {
+      setError("Tu sesión fue cerrada porque iniciaste sesión en otro dispositivo.");
+    }
+  }, [searchParams]);
 
   async function handleSubmit(formData: FormData) {
     setError(null);
@@ -81,13 +90,6 @@ export default function LoginPage() {
 
           <SubmitButton />
         </form>
-
-        <div className="mt-4 text-center text-sm text-muted-foreground">
-          No tienes cuenta?{" "}
-          <Link href="/signup" className="text-primary hover:underline">
-            Registrate
-          </Link>
-        </div>
       </CardContent>
     </Card>
   );

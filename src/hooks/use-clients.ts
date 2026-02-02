@@ -109,8 +109,9 @@ export function useCreateClient() {
       if (error) throw new Error(error.message);
       return data as ClientRow;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: clientKeys.lists() });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: clientKeys.all });
+      await queryClient.refetchQueries({ queryKey: clientKeys.lists() });
     },
   });
 }

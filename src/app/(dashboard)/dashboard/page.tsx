@@ -5,11 +5,12 @@ import { FinancialOverview } from "@/components/dashboard/financial-overview";
 import { ProjectsSummary } from "@/components/dashboard/projects-summary";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { Skeleton } from "@/components/ui/skeleton";
-import { isAdmin } from "@/types/profile";
+import { isAdmin, isClient } from "@/types/profile";
 import type { FinancialDataPoint } from "@/types/transaction";
+import type { Database } from "@/types/database";
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
+  const supabase = await createClient<Database>();
 
   // Obtener usuario y perfil
   const {
@@ -24,6 +25,13 @@ export default async function DashboardPage() {
     .eq("id", user.id)
     .single();
 
+  if (!profile) redirect("/login");
+
+  // Si es cliente, redirigir directo a proyectos
+  if (isClient(profile)) {
+    redirect("/projects");
+  }
+
   const userIsAdmin = isAdmin(profile);
 
   // Obtener datos financieros (solo si es admin)
@@ -33,14 +41,23 @@ export default async function DashboardPage() {
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
+    // Obtener transacciones
     const { data: transactions } = await supabase
       .from("transactions")
       .select("amount, type, date")
       .gte("date", sixMonthsAgo.toISOString().split("T")[0])
       .order("date", { ascending: true });
 
-    // Agrupar por mes
-    financialData = aggregateByMonth(transactions ?? []);
+    // Obtener pagos de cuotas aprobados
+    const { data: approvedPayments } = await supabase
+      .from("payment_submissions")
+      .select("amount, submitted_at, reviewed_at, status")
+      .eq("status", "approved")
+      .gte("submitted_at", sixMonthsAgo.toISOString())
+      .order("submitted_at", { ascending: true });
+
+    // Agrupar por mes combinando transacciones + pagos aprobados
+    financialData = aggregateByMonth(transactions ?? [], approvedPayments ?? []);
   }
 
   return (
@@ -82,12 +99,14 @@ export default async function DashboardPage() {
   );
 }
 
-// Helper para agregar datos por mes
+// Helper para agregar datos por mes (transacciones + pagos aprobados)
 function aggregateByMonth(
-  transactions: { amount: number; type: string; date: string }[]
+  transactions: { amount: number; type: string; date: string }[],
+  approvedPayments: { amount: number; submitted_at: string; reviewed_at: string | null; status: string }[] = []
 ): FinancialDataPoint[] {
   const months: Record<string, { income: number; expense: number }> = {};
 
+  // Agregar transacciones
   transactions.forEach((t) => {
     const monthKey = t.date.slice(0, 7); // "2025-01"
     if (!months[monthKey]) {
@@ -98,6 +117,16 @@ function aggregateByMonth(
     } else {
       months[monthKey].expense += Number(t.amount);
     }
+  });
+
+  // Agregar pagos de cuotas aprobados como ingresos
+  approvedPayments.forEach((p) => {
+    const date = p.reviewed_at || p.submitted_at;
+    const monthKey = date.slice(0, 7);
+    if (!months[monthKey]) {
+      months[monthKey] = { income: 0, expense: 0 };
+    }
+    months[monthKey].income += Number(p.amount);
   });
 
   const monthNames = [

@@ -39,13 +39,20 @@ interface ProjectRow {
   created_by: string | null;
 }
 
-async function fetchProjects(): Promise<ProjectWithRelations[]> {
+async function fetchProjects(clientId?: string | null): Promise<ProjectWithRelations[]> {
   const supabase = createClient();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("projects")
     .select("*")
     .order("created_at", { ascending: false });
+
+  // Si se proporciona clientId, filtrar solo proyectos de ese cliente
+  if (clientId) {
+    query = query.eq("client_id", clientId);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("Error fetching projects:", error);
@@ -94,11 +101,12 @@ async function fetchProject(id: string): Promise<ProjectWithRelations> {
 
 /**
  * Hook para obtener todos los proyectos (RLS aplica automaticamente)
+ * @param clientId - Si se proporciona, filtra solo proyectos de ese cliente
  */
-export function useProjects() {
+export function useProjects(clientId?: string | null) {
   return useQuery({
-    queryKey: projectKeys.lists(),
-    queryFn: fetchProjects,
+    queryKey: clientId ? projectKeys.list({ clientId }) : projectKeys.lists(),
+    queryFn: () => fetchProjects(clientId),
     // Optimización: Mantener lista de proyectos en cache para navegación rápida
     staleTime: 5 * 60 * 1000, // 5 minutos
   });

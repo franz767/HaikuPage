@@ -173,6 +173,54 @@ export function useFinancialSummary(startDate?: string, endDate?: string) {
 }
 
 /**
+ * Hook para subir comprobante de transaccion a Storage
+ */
+export function useUploadTransactionReceipt() {
+  return useMutation({
+    mutationFn: async ({ file }: { file: File }) => {
+      const supabase = createClient();
+
+      // Validar tamano (10MB max)
+      const MAX_SIZE = 10 * 1024 * 1024;
+      if (file.size > MAX_SIZE) {
+        throw new Error("El archivo excede el tamano maximo de 10MB");
+      }
+
+      // Validar tipo de archivo
+      const allowedTypes = [
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+        "application/pdf",
+      ];
+      if (!allowedTypes.includes(file.type)) {
+        throw new Error("Tipo de archivo no permitido. Use JPG, PNG, GIF, WebP o PDF");
+      }
+
+      // Limpiar nombre de archivo
+      const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+      const fileName = `${Date.now()}_${cleanFileName}`;
+      const filePath = `transactions/${fileName}`;
+
+      // Subir archivo
+      const { error: uploadError } = await supabase.storage
+        .from("payment-receipts")
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // Obtener URL publica
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("payment-receipts").getPublicUrl(filePath);
+
+      return publicUrl;
+    },
+  });
+}
+
+/**
  * Hook para crear una transaccion (solo admin)
  */
 export function useCreateTransaction() {
@@ -187,6 +235,8 @@ export function useCreateTransaction() {
       description?: string;
       project_id?: string;
       date?: string;
+      status?: "approved" | "pending";
+      receipt_url?: string;
     }) => {
       const { data, error } = await supabase
         .from("transactions")
@@ -197,6 +247,8 @@ export function useCreateTransaction() {
           description: input.description,
           project_id: input.project_id,
           date: input.date ?? new Date().toISOString().split("T")[0],
+          status: input.status ?? "approved",
+          receipt_url: input.receipt_url,
         })
         .select()
         .single();

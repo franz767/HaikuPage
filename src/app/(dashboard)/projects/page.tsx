@@ -9,19 +9,27 @@ import { useProjects } from "@/hooks/use-projects";
 import { useCurrentProfile } from "@/hooks/use-profile";
 
 export default function ProjectsPage() {
-  const { data: projects, isLoading, error } = useProjects();
   const { data: profile } = useCurrentProfile();
 
   const isAdmin = profile?.role === "admin";
+  const isClientUser = profile?.role === "cliente";
+
+  // Si es cliente, filtrar solo sus proyectos
+  const clientIdFilter = isClientUser ? profile?.client_id : undefined;
+  const { data: projects, isLoading, error } = useProjects(clientIdFilter);
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Proyectos</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {isClientUser ? "Mis Proyectos" : "Proyectos"}
+          </h1>
           <p className="text-muted-foreground">
-            Gestiona todos tus proyectos
+            {isClientUser
+              ? "Ve el progreso de tus proyectos"
+              : "Gestiona todos tus proyectos"}
           </p>
         </div>
         {profile && isAdmin && (
@@ -51,6 +59,8 @@ export default function ProjectsPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             {isAdmin
               ? "Crea tu primer proyecto para comenzar"
+              : isClientUser
+              ? "No tienes proyectos activos en este momento"
               : "No tienes proyectos asignados"}
           </p>
           {isAdmin && (

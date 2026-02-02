@@ -30,13 +30,21 @@ export async function login(input: LoginInput) {
     const validated = loginSchema.parse(input);
     const supabase = await createClient();
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: validated.email,
       password: validated.password,
     });
 
     if (error) {
       return { error: error.message };
+    }
+
+    // Guardar el session_id actual para validar sesión única
+    if (data.session) {
+      await supabase
+        .from("profiles")
+        .update({ current_session_id: data.session.access_token.slice(-32) })
+        .eq("id", data.user.id);
     }
 
     revalidatePath("/", "layout");
@@ -82,6 +90,16 @@ export async function signup(input: SignupInput) {
 
 export async function logout() {
   const supabase = await createClient();
+
+  // Limpiar session_id antes de cerrar sesión
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    await supabase
+      .from("profiles")
+      .update({ current_session_id: null })
+      .eq("id", user.id);
+  }
+
   await supabase.auth.signOut();
   revalidatePath("/", "layout");
   redirect("/login");

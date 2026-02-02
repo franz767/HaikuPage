@@ -14,9 +14,10 @@ import { cn } from "@/lib/utils";
 interface KanbanBoardProps {
     projectId: string;
     isAdmin?: boolean;
+    readOnly?: boolean;
 }
 
-export function KanbanBoard({ projectId, isAdmin = false }: KanbanBoardProps) {
+export function KanbanBoard({ projectId, isAdmin = false, readOnly = false }: KanbanBoardProps) {
     const { data: tasks, isLoading } = useTasks(projectId);
     const moveTask = useMoveTask();
 
@@ -77,9 +78,10 @@ export function KanbanBoard({ projectId, isAdmin = false }: KanbanBoardProps) {
                     tasks={tasksByColumn[column.id] || []}
                     projectId={projectId}
                     isAdmin={isAdmin}
-                    onDragStart={handleDragStart}
-                    onDragOver={handleDragOver}
-                    onDrop={handleDrop}
+                    readOnly={readOnly}
+                    onDragStart={readOnly ? undefined : handleDragStart}
+                    onDragOver={readOnly ? undefined : handleDragOver}
+                    onDrop={readOnly ? undefined : handleDrop}
                 />
             ))}
         </div>

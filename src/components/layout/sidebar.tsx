@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   FolderKanban,
   Users,
+  UsersRound,
   Wallet,
   Settings,
   LogOut,
@@ -16,14 +17,24 @@ import { logout } from "@/actions/auth";
 
 interface SidebarProps {
   isAdmin: boolean;
+  isClient?: boolean;
 }
 
-const navigation = [
+type NavItem = {
+  name: string;
+  href: string;
+  icon: typeof LayoutDashboard;
+  adminOnly: boolean;
+  hideForClient?: boolean;
+};
+
+const navigation: NavItem[] = [
   {
     name: "Dashboard",
     href: "/dashboard",
     icon: LayoutDashboard,
     adminOnly: false,
+    hideForClient: true,
   },
   {
     name: "Proyectos",
@@ -36,12 +47,21 @@ const navigation = [
     href: "/clients",
     icon: Users,
     adminOnly: false,
+    hideForClient: true,
+  },
+  {
+    name: "Colaboradores",
+    href: "/collaborators",
+    icon: UsersRound,
+    adminOnly: true,
+    hideForClient: true,
   },
   {
     name: "Finanzas",
     href: "/finances",
     icon: Wallet,
-    adminOnly: true, // Solo visible para admin
+    adminOnly: true,
+    hideForClient: true,
   },
   {
     name: "Configuracion",
@@ -51,12 +71,16 @@ const navigation = [
   },
 ];
 
-export function Sidebar({ isAdmin }: SidebarProps) {
+export function Sidebar({ isAdmin, isClient = false }: SidebarProps) {
   const pathname = usePathname();
 
-  const filteredNavigation = navigation.filter(
-    (item) => !item.adminOnly || isAdmin
-  );
+  const filteredNavigation = navigation.filter((item) => {
+    // Si es cliente, ocultar items marcados con hideForClient
+    if (isClient && item.hideForClient) return false;
+    // Si es adminOnly, solo mostrar para admin
+    if (item.adminOnly && !isAdmin) return false;
+    return true;
+  });
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r bg-card">
