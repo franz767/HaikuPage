@@ -41,8 +41,7 @@ export async function login(input: LoginInput) {
 
     // Guardar el session_id actual para validar sesión única
     if (data.session) {
-      await supabase
-        .from("profiles")
+      await (supabase.from("profiles") as any)
         .update({ current_session_id: data.session.access_token.slice(-32) })
         .eq("id", data.user.id);
     }
@@ -94,8 +93,7 @@ export async function logout() {
   // Limpiar session_id antes de cerrar sesión
   const { data: { user } } = await supabase.auth.getUser();
   if (user) {
-    await supabase
-      .from("profiles")
+    await (supabase.from("profiles") as any)
       .update({ current_session_id: null })
       .eq("id", user.id);
   }
