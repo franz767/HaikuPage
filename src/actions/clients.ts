@@ -15,6 +15,7 @@ interface InviteClientResult {
     success: boolean;
     error?: string;
     clientId?: string;
+    defaultPassword?: string;
 }
 
 /**
@@ -76,41 +77,60 @@ export async function inviteClient(input: InviteClientInput): Promise<InviteClie
             return { success: false, error: "Error al crear el cliente: " + clientError.message };
         }
 
-        // 3. Invitar al usuario por email usando el admin client
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        // 3. Crear el usuario con contraseña por defecto usando el admin client
+        const defaultPassword = "Cliente2024!";
 
-        const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
-            input.email,
-            {
-                redirectTo: `${appUrl}/auth/callback?type=invite&client_id=${client.id}`,
-                data: {
+        const { data: userData, error: userError } = await adminClient.auth.admin.createUser({
+            email: input.email,
+            password: defaultPassword,
+            email_confirm: true, // Confirmar email automaticamente
+            user_metadata: {
+                full_name: input.name,
+                role: "cliente",
+                client_id: client.id,
+            },
+        });
+
+        if (userError) {
+            // Si falla la creacion del usuario, eliminar el cliente creado
+            await supabase.from("clients").delete().eq("id", client.id);
+            console.error("Error creating user:", userError);
+            return { success: false, error: "Error al crear usuario: " + userError.message };
+        }
+
+        // 4. Crear el perfil con rol cliente
+        if (userData.user) {
+            const { error: profileError } = await adminClient
+                .from("profiles")
+                .upsert({
+                    id: userData.user.id,
                     full_name: input.name,
                     role: "cliente",
                     client_id: client.id,
-                },
-            }
-        );
+                });
 
-        if (inviteError) {
-            // Si falla la invitación, eliminar el cliente creado
-            await supabase.from("clients").delete().eq("id", client.id);
-            console.error("Error inviting user:", inviteError);
-            return { success: false, error: "Error al enviar invitación: " + inviteError.message };
+            if (profileError) {
+                console.error("Error creating profile:", profileError);
+            }
+
+            // 5. Actualizar el cliente con el user_id
+            await supabase
+                .from("clients")
+                .update({ user_id: userData.user.id })
+                .eq("id", client.id);
         }
 
-        // 4. Crear el perfil con rol cliente (el trigger puede no hacerlo correctamente)
-        // Esto se hará cuando el usuario confirme su email
-        // Por ahora, almacenamos la relación en el user_metadata
-
-        console.log("Cliente invitado exitosamente:", {
+        console.log("Cliente creado exitosamente:", {
             clientId: client.id,
-            userId: inviteData.user?.id,
+            userId: userData.user?.id,
             email: input.email,
+            password: defaultPassword,
         });
 
         return {
             success: true,
-            clientId: client.id
+            clientId: client.id,
+            defaultPassword: defaultPassword,
         };
 
     } catch (error) {

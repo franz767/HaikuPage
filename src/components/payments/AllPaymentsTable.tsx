@@ -11,11 +11,21 @@ import {
   TrendingUp,
   TrendingDown,
   Receipt,
+  Trash2,
+  Download,
+  ExternalLink,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -31,8 +41,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useAllPayments } from "@/hooks/use-payment-submissions";
-import { useTransactions } from "@/hooks/use-transactions";
+import { useAllPayments, useDeletePaymentSubmission } from "@/hooks/use-payment-submissions";
+import { useTransactions, useDeleteTransaction } from "@/hooks/use-transactions";
 import { getInitials } from "@/types/profile";
 import type { PaymentSubmissionWithRelations } from "@/types/payment-submission";
 import type { Transaction } from "@/types/transaction";
@@ -80,10 +90,36 @@ const ITEMS_PER_PAGE = 10;
 export function AllPaymentsTable() {
   const { data: allPayments = [], isLoading: paymentsLoading } = useAllPayments();
   const { data: transactions = [], isLoading: transactionsLoading } = useTransactions();
+  const deletePayment = useDeletePaymentSubmission();
+  const deleteTransaction = useDeleteTransaction();
+
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedReceipt, setSelectedReceipt] = useState<{
+    url: string;
+    title: string;
+  } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    record: UnifiedRecord;
+  } | null>(null);
 
   const isLoading = paymentsLoading || transactionsLoading;
+  const isDeleting = deletePayment.isPending || deleteTransaction.isPending;
+
+  const handleDelete = async () => {
+    if (!deleteConfirm) return;
+
+    try {
+      if (deleteConfirm.record.type === "payment") {
+        await deletePayment.mutateAsync(deleteConfirm.record.id);
+      } else {
+        await deleteTransaction.mutateAsync(deleteConfirm.record.id);
+      }
+      setDeleteConfirm(null);
+    } catch (error) {
+      console.error("Error al eliminar:", error);
+    }
+  };
 
   // Unificar pagos y transacciones en un formato común
   const unifiedRecords = useMemo(() => {
@@ -108,13 +144,17 @@ export function AllPaymentsTable() {
 
     // Agregar transacciones (ingresos y gastos)
     transactions.forEach((transaction: Transaction) => {
+      // Parsear fecha como local (evita bug de timezone con UTC)
+      const [year, month, day] = transaction.date.split('-').map(Number);
+      const localDate = new Date(year, month - 1, day);
+
       records.push({
         id: transaction.id,
         type: transaction.type as "income" | "expense",
         typeLabel: transaction.type === "income" ? "Ingreso" : "Gasto",
         description: transaction.description || transaction.category,
         amount: Number(transaction.amount),
-        date: new Date(transaction.date),
+        date: localDate,
         status: (transaction.status as "approved" | "pending") || "approved",
         submitter: null,
         receiptUrl: transaction.receipt_url || undefined,
@@ -218,7 +258,7 @@ export function AllPaymentsTable() {
                 <TableHead className="text-right">Monto</TableHead>
                 <TableHead>Fecha</TableHead>
                 <TableHead>Estatus</TableHead>
-                <TableHead className="w-[80px] text-center">Acciones</TableHead>
+                <TableHead className="w-[100px] text-center">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -227,6 +267,8 @@ export function AllPaymentsTable() {
                   key={record.id}
                   record={record}
                   rowNumber={startIndex + index + 1}
+                  onViewReceipt={(url, title) => setSelectedReceipt({ url, title })}
+                  onDelete={() => setDeleteConfirm({ record })}
                 />
               ))}
             </TableBody>
@@ -260,6 +302,100 @@ export function AllPaymentsTable() {
           </div>
         )}
       </CardContent>
+
+      {/* Modal para ver comprobante */}
+      <Dialog open={!!selectedReceipt} onOpenChange={() => setSelectedReceipt(null)}>
+        <DialogContent className="max-w-3xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>{selectedReceipt?.title || "Comprobante"}</span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => selectedReceipt && window.open(selectedReceipt.url, "_blank")}
+                >
+                  <ExternalLink className="h-4 w-4 mr-1" />
+                  Abrir
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                >
+                  <a href={selectedReceipt?.url} download>
+                    <Download className="h-4 w-4 mr-1" />
+                    Descargar
+                  </a>
+                </Button>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center overflow-auto bg-muted/30 rounded-lg p-4 min-h-[400px]">
+            {selectedReceipt?.url && (
+              selectedReceipt.url.toLowerCase().endsWith(".pdf") ? (
+                <iframe
+                  src={selectedReceipt.url}
+                  className="w-full h-[500px] rounded border"
+                  title="Comprobante PDF"
+                />
+              ) : (
+                <img
+                  src={selectedReceipt.url}
+                  alt="Comprobante"
+                  className="max-w-full max-h-[500px] object-contain rounded shadow-lg"
+                />
+              )
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de confirmación de eliminación */}
+      <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Confirmar eliminacion
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground">
+              ¿Estas seguro de que deseas eliminar este registro?
+            </p>
+            {deleteConfirm && (
+              <div className="mt-3 p-3 bg-muted rounded-md">
+                <p className="font-medium text-sm">{deleteConfirm.record.typeLabel}</p>
+                <p className="text-sm text-muted-foreground">{deleteConfirm.record.description}</p>
+                <p className="text-sm font-semibold mt-1">
+                  S/ {deleteConfirm.record.amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+            )}
+            <p className="text-xs text-destructive mt-3">
+              Esta accion no se puede deshacer.
+            </p>
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteConfirm(null)}
+              disabled={isDeleting}
+            >
+              No, cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Si, eliminar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
@@ -267,9 +403,13 @@ export function AllPaymentsTable() {
 function RecordRow({
   record,
   rowNumber,
+  onViewReceipt,
+  onDelete,
 }: {
   record: UnifiedRecord;
   rowNumber: number;
+  onViewReceipt: (url: string, title: string) => void;
+  onDelete: () => void;
 }) {
   // Icono y color según el tipo
   const getTypeIcon = () => {
@@ -387,18 +527,32 @@ function RecordRow({
       </TableCell>
 
       {/* Acciones */}
-      <TableCell className="text-center">
-        {record.receiptUrl && (
+      <TableCell>
+        <div className="flex items-center justify-center gap-1">
+          {record.receiptUrl && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onViewReceipt(
+                record.receiptUrl!,
+                `Comprobante - ${record.typeLabel} - ${record.description}`
+              )}
+              title="Ver comprobante"
+              className="h-8 w-8"
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => window.open(record.receiptUrl, "_blank")}
-            title="Ver comprobante"
-            className="h-8 w-8"
+            onClick={onDelete}
+            title="Eliminar"
+            className="h-8 w-8 text-muted-foreground hover:text-destructive"
           >
-            <Eye className="h-4 w-4" />
+            <Trash2 className="h-4 w-4" />
           </Button>
-        )}
+        </div>
       </TableCell>
     </TableRow>
   );

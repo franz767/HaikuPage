@@ -6,17 +6,18 @@ import { Button } from "@/components/ui/button";
 import { ProjectCard } from "@/components/projects/project-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProjects } from "@/hooks/use-projects";
-import { useCurrentProfile } from "@/hooks/use-profile";
+import { useUserRole } from "@/hooks/use-user-role";
 
 export default function ProjectsPage() {
-  const { data: profile } = useCurrentProfile();
-
-  const isAdmin = profile?.role === "admin";
-  const isClientUser = profile?.role === "cliente";
+  const { profile, isAdmin, isClient, isLoading: isLoadingProfile } = useUserRole();
 
   // Si es cliente, filtrar solo sus proyectos
-  const clientIdFilter = isClientUser ? profile?.client_id : undefined;
-  const { data: projects, isLoading, error } = useProjects(clientIdFilter);
+  const clientIdFilter = isClient ? profile?.client_id : undefined;
+
+  // Solo buscar proyectos cuando ya tenemos el perfil cargado para saber si filtrar
+  const { data: projects, isLoading: isLoadingProjects, error } = useProjects(clientIdFilter);
+
+  const isLoading = isLoadingProfile || isLoadingProjects;
 
   return (
     <div className="space-y-6">
@@ -24,15 +25,15 @@ export default function ProjectsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
-            {isClientUser ? "Mis Proyectos" : "Proyectos"}
+            {isClient ? "Mis Proyectos" : "Proyectos"}
           </h1>
           <p className="text-muted-foreground">
-            {isClientUser
+            {isClient
               ? "Ve el progreso de tus proyectos"
               : "Gestiona todos tus proyectos"}
           </p>
         </div>
-        {profile && isAdmin && (
+        {isAdmin && (
           <Button asChild>
             <Link href="/projects/new">
               <Plus className="mr-2 h-4 w-4" />
@@ -59,9 +60,9 @@ export default function ProjectsPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             {isAdmin
               ? "Crea tu primer proyecto para comenzar"
-              : isClientUser
-              ? "No tienes proyectos activos en este momento"
-              : "No tienes proyectos asignados"}
+              : isClient
+                ? "No tienes proyectos activos en este momento"
+                : "No tienes proyectos asignados"}
           </p>
           {isAdmin && (
             <Button className="mt-4" asChild>

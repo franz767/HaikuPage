@@ -138,13 +138,30 @@ export default function SettingsPage() {
               <p className="text-sm text-muted-foreground">
                 {profile?.role === "admin"
                   ? "Acceso completo a todas las funciones"
+                  : profile?.role === "cliente"
+                  ? "Acceso de solo lectura a tus proyectos"
                   : "Acceso limitado a proyectos asignados"}
               </p>
             </div>
             <Badge variant={profile?.role === "admin" ? "default" : "secondary"}>
-              {profile?.role === "admin" ? "Administrador" : "Colaborador"}
+              {profile?.role === "admin"
+                ? "Administrador"
+                : profile?.role === "cliente"
+                ? "Cliente"
+                : "Colaborador"}
             </Badge>
           </div>
+
+          {profile?.role === "cliente" && (
+            <div className="mt-4 p-3 bg-muted rounded-md">
+              <p className="text-sm font-medium">Permisos de cliente:</p>
+              <ul className="text-sm text-muted-foreground mt-2 space-y-1">
+                <li>• Ver el progreso de tus proyectos</li>
+                <li>• Ver las tareas y su estado</li>
+                <li>• Consultar información de pagos</li>
+              </ul>
+            </div>
+          )}
 
           {profile?.role === "admin" && (
             <div className="mt-4 p-3 bg-muted rounded-md">

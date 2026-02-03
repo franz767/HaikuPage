@@ -523,10 +523,13 @@ export default function ProjectDetailPage({ params }: PageProps) {
                                 S/ {installment.amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                               </p>
                               <p className="text-[10px] text-muted-foreground">
-                                Vence: {new Date(installment.date).toLocaleDateString("es-PE", {
-                                  day: "numeric",
-                                  month: "short",
-                                })}
+                                Vence: {(() => {
+                                  const [y, m, d] = installment.date.split('-').map(Number);
+                                  return new Date(y, m - 1, d).toLocaleDateString("es-PE", {
+                                    day: "numeric",
+                                    month: "short",
+                                  });
+                                })()}
                               </p>
                             </div>
                           </div>

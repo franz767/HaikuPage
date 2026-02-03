@@ -1,15 +1,22 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Loader2, ChevronDown } from "lucide-react";
+import { ArrowLeft, Loader2, ChevronDown, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCreateProject } from "@/hooks/use-projects";
 import { useClients } from "@/hooks/use-clients";
 import { useCurrentProfile } from "@/hooks/use-profile";
+
+interface Installment {
+  number: number;
+  amount: string;
+  date: string;
+  paid: boolean;
+}
 
 export default function NewProjectPage() {
   const router = useRouter();
@@ -32,55 +39,120 @@ export default function NewProjectPage() {
     deadline: "",
     budget: "",
     client_id: "",
-    installments_count: "1", // Número de cuotas
+    installments_count: "1",
   });
+  const [installments, setInstallments] = useState<Installment[]>([]);
   const [error, setError] = useState("");
+  const errorRef = useRef<HTMLDivElement>(null);
 
-  // Generar cuotas de pago automáticamente
-  const generateInstallments = () => {
+  // Generar cuotas iniciales cuando cambia el número de cuotas o el presupuesto
+  useEffect(() => {
     const budget = parseFloat(formData.budget);
     const count = parseInt(formData.installments_count);
 
-    if (!budget || budget <= 0 || !count || count <= 0) return [];
+    if (!budget || budget <= 0 || !count || count <= 0) {
+      setInstallments([]);
+      return;
+    }
 
-    const amountPerInstallment = Math.round((budget / count) * 100) / 100;
-    const today = new Date();
-
-    return Array.from({ length: count }, (_, i) => {
-      // Distribuir fechas: si hay deadline, distribuir hasta ahí, sino mensualmente
-      let dueDate: Date;
-      if (formData.deadline) {
-        const deadline = new Date(formData.deadline);
-        const totalDays = Math.max(1, Math.floor((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
-        const daysPerInstallment = Math.floor(totalDays / count);
-        dueDate = new Date(today.getTime() + (daysPerInstallment * (i + 1)) * (1000 * 60 * 60 * 24));
-      } else {
-        // Sin deadline: una cuota por mes
-        dueDate = new Date(today);
-        dueDate.setMonth(dueDate.getMonth() + i + 1);
-      }
+    // Mantener valores existentes si es posible
+    const newInstallments: Installment[] = Array.from({ length: count }, (_, i) => {
+      const existing = installments[i];
+      const today = new Date();
+      today.setMonth(today.getMonth() + i + 1);
+      const defaultDate = today.toISOString().split('T')[0];
 
       return {
         number: i + 1,
-        amount: i === count - 1
-          ? Math.round((budget - amountPerInstallment * (count - 1)) * 100) / 100 // Última cuota ajusta diferencia
-          : amountPerInstallment,
-        date: dueDate.toISOString().split('T')[0],
+        amount: existing?.amount || "",
+        date: existing?.date || defaultDate,
         paid: false,
       };
     });
+
+    setInstallments(newInstallments);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.installments_count, formData.budget]);
+
+  // Actualizar una cuota específica
+  const updateInstallment = (index: number, field: "amount" | "date", value: string) => {
+    // Prevenir montos negativos
+    if (field === "amount" && parseFloat(value) < 0) {
+      return;
+    }
+    setInstallments(prev => prev.map((inst, i) =>
+      i === index ? { ...inst, [field]: value } : inst
+    ));
   };
 
-  const installments = generateInstallments();
+  // Prevenir caracteres no numéricos en inputs de monto (como 'e', '+', '-')
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (["e", "E", "+", "-"].includes(e.key)) {
+      e.preventDefault();
+    }
+  };
+
+  // Calcular el total de cuotas
+  const totalInstallments = installments.reduce((sum, inst) => sum + (parseFloat(inst.amount) || 0), 0);
+  const budget = parseFloat(formData.budget) || 0;
+  const difference = budget - totalInstallments;
+
+  // Función para mostrar error y hacer scroll
+  const showError = (message: string) => {
+    setError(message);
+    setTimeout(() => {
+      errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
     if (!formData.name.trim()) {
-      setError("El nombre del proyecto es requerido");
+      showError("El nombre del proyecto es requerido");
       return;
     }
+
+    // Validar cuotas si hay presupuesto
+    if (budget > 0 && installments.length > 0) {
+      const emptyAmounts = installments.filter(inst => !inst.amount || parseFloat(inst.amount) <= 0);
+      const negativeAmounts = installments.filter(inst => parseFloat(inst.amount) < 0);
+      const emptyDates = installments.filter(inst => !inst.date);
+
+      if (negativeAmounts.length > 0) {
+        showError(`Las cuotas ${negativeAmounts.map(i => i.number).join(", ")} tienen montos negativos. Por favor ingresa valores válidos.`);
+        return;
+      }
+      if (emptyAmounts.length > 0) {
+        showError(`Las cuotas ${emptyAmounts.map(i => i.number).join(", ")} no tienen monto. Por favor completa todos los montos.`);
+        return;
+      }
+      if (emptyDates.length > 0) {
+        showError(`Las cuotas ${emptyDates.map(i => i.number).join(", ")} no tienen fecha. Por favor completa todas las fechas.`);
+        return;
+      }
+
+      // Validar que el total de cuotas sea exactamente igual al presupuesto
+      const total = installments.reduce((sum, inst) => sum + (parseFloat(inst.amount) || 0), 0);
+      const diff = Math.abs(budget - total);
+      if (diff > 0.01) {
+        if (total < budget) {
+          showError(`El total de las cuotas (S/ ${total.toFixed(2)}) es menor que el presupuesto (S/ ${budget.toFixed(2)}). Faltan S/ ${(budget - total).toFixed(2)}.`);
+        } else {
+          showError(`El total de las cuotas (S/ ${total.toFixed(2)}) excede el presupuesto (S/ ${budget.toFixed(2)}) por S/ ${(total - budget).toFixed(2)}.`);
+        }
+        return;
+      }
+    }
+
+    // Preparar cuotas para guardar
+    const formattedInstallments = installments.map(inst => ({
+      number: inst.number,
+      amount: parseFloat(inst.amount) || 0,
+      date: inst.date,
+      paid: false,
+    }));
 
     try {
       await createProject.mutateAsync({
@@ -90,11 +162,11 @@ export default function NewProjectPage() {
         budget: formData.budget ? parseFloat(formData.budget) : undefined,
         client_id: formData.client_id || undefined,
         status: "inicio",
-        metadata: installments.length > 0 ? { payment_installments: installments } : undefined,
+        metadata: formattedInstallments.length > 0 ? { payment_installments: formattedInstallments } : undefined,
       });
       router.push("/projects");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al crear proyecto");
+      showError(err instanceof Error ? err.message : "Error al crear proyecto");
     }
   };
 
@@ -141,8 +213,15 @@ export default function NewProjectPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">
-                {error}
+              <div
+                ref={errorRef}
+                className="p-4 text-sm text-red-700 bg-red-50 rounded-lg border border-red-200 flex items-start gap-3"
+              >
+                <AlertCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium">Error al crear proyecto</p>
+                  <p className="mt-1">{error}</p>
+                </div>
               </div>
             )}
 
@@ -236,6 +315,7 @@ export default function NewProjectPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, budget: e.target.value })
                   }
+                  onKeyDown={handleKeyDown}
                 />
               </div>
             </div>
@@ -266,35 +346,59 @@ export default function NewProjectPage() {
                   </div>
                 </div>
 
-                {/* Preview de cuotas */}
+                {/* Cuotas editables */}
                 {installments.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Vista previa de cuotas:</p>
-                    <div className="grid gap-2">
-                      {installments.map((inst) => (
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium text-muted-foreground">Configurar cuotas:</p>
+                    <div className="grid gap-3">
+                      {installments.map((inst, index) => (
                         <div
                           key={inst.number}
-                          className="flex items-center justify-between p-2 bg-background rounded-md border text-sm"
+                          className="flex items-center gap-3 p-3 bg-background rounded-md border"
                         >
-                          <span className="font-medium">Cuota {inst.number}</span>
-                          <div className="flex items-center gap-4">
-                            <span className="text-muted-foreground">
-                              {new Date(inst.date).toLocaleDateString("es-PE", {
-                                day: "numeric",
-                                month: "short",
-                                year: "numeric"
-                              })}
-                            </span>
-                            <span className="font-semibold text-primary">
-                              S/ {inst.amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
-                            </span>
+                          <span className="font-medium text-sm w-20 shrink-0">Cuota {inst.number}</span>
+                          <div className="flex-1 grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-xs text-muted-foreground mb-1 block">Fecha</label>
+                              <Input
+                                type="date"
+                                value={inst.date}
+                                onChange={(e) => updateInstallment(index, "date", e.target.value)}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-muted-foreground mb-1 block">Monto (S/)</label>
+                              <Input
+                                type="number"
+                                placeholder="0.00"
+                                min="0"
+                                step="0.01"
+                                value={inst.amount}
+                                onChange={(e) => updateInstallment(index, "amount", e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                className="h-8 text-sm"
+                              />
+                            </div>
                           </div>
                         </div>
                       ))}
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      * Las fechas se distribuyen automáticamente hasta la fecha límite
-                    </p>
+
+                    {/* Resumen de totales */}
+                    <div className="flex items-center justify-between p-3 bg-background rounded-md border">
+                      <span className="text-sm font-medium">Total cuotas:</span>
+                      <div className="text-right">
+                        <span className={`font-semibold ${Math.abs(difference) > 0.01 ? "text-amber-600" : "text-green-600"}`}>
+                          S/ {totalInstallments.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                        </span>
+                        {Math.abs(difference) > 0.01 && (
+                          <p className="text-xs text-amber-600">
+                            {difference > 0 ? `Faltan S/ ${difference.toFixed(2)}` : `Excede S/ ${Math.abs(difference).toFixed(2)}`}
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

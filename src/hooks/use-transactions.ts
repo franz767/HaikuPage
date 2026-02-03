@@ -77,7 +77,9 @@ async function fetchFinancialChartData(
   // Agrupar por mes
   const monthlyData: Record<string, { income: number; expense: number }> = {};
 
-  (data ?? []).forEach((t) => {
+  const transactions = (data ?? []) as any[];
+
+  transactions.forEach((t) => {
     const monthKey = t.date.slice(0, 7); // "2025-01"
     if (!monthlyData[monthKey]) {
       monthlyData[monthKey] = { income: 0, expense: 0 };
@@ -147,6 +149,7 @@ export function useTransactions(startDate?: string, endDate?: string) {
   return useQuery({
     queryKey: transactionKeys.list({ startDate, endDate }),
     queryFn: () => fetchTransactions(startDate, endDate),
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -157,6 +160,7 @@ export function useFinancialChartData(months: number = 6) {
   return useQuery({
     queryKey: transactionKeys.chart(months),
     queryFn: () => fetchFinancialChartData(months),
+    staleTime: 5 * 60 * 1000,
   });
 }
 

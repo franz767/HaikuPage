@@ -356,11 +356,14 @@ export default function EditProjectPage({ params }: PageProps) {
                           </div>
                           <div className="flex items-center gap-4">
                             <span className="text-muted-foreground">
-                              {new Date(inst.date).toLocaleDateString("es-PE", {
-                                day: "numeric",
-                                month: "short",
-                                year: "numeric"
-                              })}
+                              {(() => {
+                                const [y, m, d] = inst.date.split('-').map(Number);
+                                return new Date(y, m - 1, d).toLocaleDateString("es-PE", {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric"
+                                });
+                              })()}
                             </span>
                             <span className={`font-semibold ${inst.paid ? "text-emerald-700" : "text-primary"}`}>
                               S/ {inst.amount.toLocaleString("es-PE", { minimumFractionDigits: 2 })}

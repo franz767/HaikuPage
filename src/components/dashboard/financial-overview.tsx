@@ -19,9 +19,10 @@ import { formatCurrency } from "@/types/transaction";
 interface FinancialOverviewProps {
   data: FinancialDataPoint[];
   className?: string;
+  headerActions?: React.ReactNode;
 }
 
-export function FinancialOverview({ data, className }: FinancialOverviewProps) {
+export function FinancialOverview({ data, className, headerActions }: FinancialOverviewProps) {
   // Calcular totales y tendencia
   const stats = useMemo(() => {
     const totalIncome = data.reduce((sum, d) => sum + d.income, 0);
@@ -52,9 +53,12 @@ export function FinancialOverview({ data, className }: FinancialOverviewProps) {
     <Card className={cn("", className)}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold">
-            Resumen Financiero
-          </CardTitle>
+          <div className="flex items-center gap-4">
+            <CardTitle className="text-lg font-semibold">
+              Resumen Financiero
+            </CardTitle>
+            {headerActions}
+          </div>
           <div className={cn("flex items-center gap-1 text-sm", trendColor)}>
             <TrendIcon className="h-4 w-4" />
             <span>

@@ -23,7 +23,27 @@ export function useTasks(projectId: string) {
             const supabase = createClient();
             const { data, error } = await supabase
                 .from("project_tasks" as any)
-                .select("*")
+                .select(`
+                    id,
+                    project_id,
+                    title,
+                    description,
+                    status,
+                    position,
+                    label_text,
+                    label_color,
+                    due_date,
+                    due_time,
+                    start_date,
+                    is_completed,
+                    assigned_to,
+                    checklist_total,
+                    checklist_completed,
+                    attachments_count,
+                    comments_count,
+                    created_at,
+                    updated_at
+                `)
                 .eq("project_id", projectId)
                 .order("position", { ascending: true });
 

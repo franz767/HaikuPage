@@ -357,3 +357,29 @@ export function useRejectPayment() {
     },
   });
 }
+
+/**
+ * Hook para eliminar un pago (admin)
+ */
+export function useDeletePaymentSubmission() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (submissionId: string) => {
+      const supabase = createClient();
+
+      const { error } = await supabase
+        .from("payment_submissions")
+        .delete()
+        .eq("id", submissionId);
+
+      if (error) throw new Error(error.message);
+      return submissionId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: paymentSubmissionKeys.all,
+      });
+    },
+  });
+}

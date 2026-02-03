@@ -23,11 +23,16 @@ export function isUser(profile: Profile | null | undefined): boolean {
   return profile?.role === "user";
 }
 
+export function isCollaborator(profile: Profile | null | undefined): boolean {
+  return profile?.role === "colaborador";
+}
+
 export function isClient(profile: Profile | null | undefined): boolean {
   return profile?.role === "cliente" || profile?.role === "user";
 }
 
-export function getInitials(fullName: string): string {
+export function getInitials(fullName: string | null): string {
+  if (!fullName) return "??";
   return fullName
     .split(" ")
     .map((word) => word[0])

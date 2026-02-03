@@ -22,6 +22,7 @@ export default function NewClientPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [defaultPassword, setDefaultPassword] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,6 +54,7 @@ export default function NewClientPage() {
         return;
       }
 
+      setDefaultPassword(result.defaultPassword || "");
       setSuccess(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al crear cliente");
@@ -71,17 +73,35 @@ export default function NewClientPage() {
               <div className="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center">
                 <CheckCircle className="h-8 w-8 text-green-600" />
               </div>
-              <h2 className="text-2xl font-semibold">¡Invitación enviada!</h2>
+              <h2 className="text-2xl font-semibold">¡Cliente creado!</h2>
               <p className="text-muted-foreground max-w-md">
-                Se ha enviado un email de invitación a <strong>{formData.email}</strong>.
-                El cliente podrá crear su contraseña y acceder al sistema una vez que confirme su cuenta.
+                El cliente <strong>{formData.name}</strong> ha sido creado exitosamente.
+                Comparte las siguientes credenciales para que pueda acceder al sistema:
               </p>
+
+              {/* Credenciales */}
+              <div className="w-full max-w-sm bg-muted/50 rounded-lg p-4 space-y-3 text-left">
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Email</p>
+                  <p className="font-mono font-medium">{formData.email}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Contraseña</p>
+                  <p className="font-mono font-medium">{defaultPassword}</p>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                Se recomienda que el cliente cambie su contraseña después del primer inicio de sesión.
+              </p>
+
               <div className="flex gap-3 pt-4">
                 <Button variant="outline" onClick={() => {
                   setSuccess(false);
+                  setDefaultPassword("");
                   setFormData({ name: "", company: "", email: "", phone: "", notes: "" });
                 }}>
-                  Invitar otro cliente
+                  Crear otro cliente
                 </Button>
                 <Button onClick={() => router.push("/clients")}>
                   Volver a clientes
@@ -121,7 +141,7 @@ export default function NewClientPage() {
             Información del Cliente
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            Se enviará un email de invitación al cliente para que cree su cuenta.
+            Se creará una cuenta con contraseña por defecto para el cliente.
           </p>
         </CardHeader>
         <CardContent>
@@ -163,7 +183,7 @@ export default function NewClientPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label htmlFor="email" className="text-sm font-medium">
-                  Email * <span className="text-muted-foreground font-normal">(para invitación)</span>
+                  Email * <span className="text-muted-foreground font-normal">(para login)</span>
                 </label>
                 <Input
                   id="email"
@@ -221,7 +241,7 @@ export default function NewClientPage() {
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
                 <Mail className="mr-2 h-4 w-4" />
-                Enviar Invitación
+                Crear Cliente
               </Button>
             </div>
           </form>

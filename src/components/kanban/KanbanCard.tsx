@@ -50,6 +50,7 @@ export function KanbanCard({ task, onDragStart, onDragEnd, isAdmin, readOnly = f
     };
 
     const handleCardClick = (e: React.MouseEvent) => {
+        if (readOnly) return; // Clientes no pueden abrir el modal
         if ((e.target as HTMLElement).closest("button")) return;
         setShowModal(true);
     };
@@ -163,11 +164,6 @@ export function KanbanCard({ task, onDragStart, onDragEnd, isAdmin, readOnly = f
                                 )}>
                                     {task.title}
                                 </p>
-                                {task.description && (
-                                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                                        {task.description}
-                                    </p>
-                                )}
                             </div>
                             {!readOnly && (
                                 <Button

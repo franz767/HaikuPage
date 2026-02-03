@@ -6,9 +6,9 @@ import { Plus, TrendingUp, TrendingDown, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FinancialOverview } from "@/components/dashboard/financial-overview";
 import { PendingPaymentsTable } from "@/components/payments/PendingPaymentsTable";
 import { AllPaymentsTable } from "@/components/payments/AllPaymentsTable";
+import { FinancialMetricsWidget } from "@/components/dashboard/financial-metrics-widget";
 import { useTransactions } from "@/hooks/use-transactions";
 import { useAllPayments } from "@/hooks/use-payment-submissions";
 import { useCurrentProfile } from "@/hooks/use-profile";
@@ -24,7 +24,7 @@ export default function FinancesPage() {
   const isLoading = transactionsLoading || paymentsLoading;
   const userIsAdmin = isAdmin(profile);
 
-  // Calcular resumen combinando transacciones + pagos de cuotas aprobados
+  // Calcular resumen combinando transacciones + pagos de cuotas aprobados para las TARJETAS SUPERIORES (Histórico Total)
   const summary = useMemo(() => {
     // Ingresos de transacciones
     const transactionIncome = transactions
@@ -46,50 +46,6 @@ export default function FinancesPage() {
     const netProfit = totalIncome - totalExpense;
 
     return { totalIncome, totalExpense, netProfit };
-  }, [transactions, payments]);
-
-  // Crear datos del grafico combinando transacciones + pagos aprobados
-  const combinedChartData = useMemo(() => {
-    const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-    const monthlyData: Record<string, { income: number; expense: number }> = {};
-
-    // Agregar transacciones
-    transactions.forEach((t) => {
-      const monthKey = t.date.slice(0, 7); // "2025-01"
-      if (!monthlyData[monthKey]) {
-        monthlyData[monthKey] = { income: 0, expense: 0 };
-      }
-      if (t.type === "income") {
-        monthlyData[monthKey].income += Number(t.amount);
-      } else {
-        monthlyData[monthKey].expense += Number(t.amount);
-      }
-    });
-
-    // Agregar pagos de cuotas aprobados como ingresos
-    payments
-      .filter((p) => p.status === "approved")
-      .forEach((p) => {
-        const date = p.reviewed_at || p.submitted_at;
-        const monthKey = date.slice(0, 7);
-        if (!monthlyData[monthKey]) {
-          monthlyData[monthKey] = { income: 0, expense: 0 };
-        }
-        monthlyData[monthKey].income += Number(p.amount);
-      });
-
-    // Convertir a formato de grafico y ordenar
-    return Object.entries(monthlyData)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([key, value]) => {
-        const [year, month] = key.split("-");
-        return {
-          date: `${monthNames[parseInt(month) - 1]} ${year.slice(2)}`,
-          income: value.income,
-          expense: value.expense,
-          net: value.income - value.expense,
-        };
-      });
   }, [transactions, payments]);
 
   return (
@@ -116,12 +72,12 @@ export default function FinancesPage() {
       {/* Historial de todos los pagos (solo admin) */}
       {userIsAdmin && <AllPaymentsTable />}
 
-      {/* Stats Cards */}
+      {/* Stats Cards (Resumen Histórico Total) */}
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Ingresos Totales
+              Ingresos Totales (Histórico)
             </CardTitle>
             <TrendingUp className="h-4 w-4 text-emerald-500" />
           </CardHeader>
@@ -139,7 +95,7 @@ export default function FinancesPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Gastos Totales
+              Gastos Totales (Histórico)
             </CardTitle>
             <TrendingDown className="h-4 w-4 text-red-500" />
           </CardHeader>
@@ -157,7 +113,7 @@ export default function FinancesPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Balance Neto
+              Balance Neto (Histórico)
             </CardTitle>
             <Wallet className="h-4 w-4 text-primary" />
           </CardHeader>
@@ -180,24 +136,14 @@ export default function FinancesPage() {
         </Card>
       </div>
 
-      {/* Chart */}
+      {/* Chart Widget (Interactivo) */}
       {isLoading ? (
         <Skeleton className="h-[350px]" />
-      ) : combinedChartData && combinedChartData.length > 0 ? (
-        <FinancialOverview data={combinedChartData} />
       ) : (
-        <Card>
-          <CardContent className="flex h-[350px] items-center justify-center">
-            <div className="text-center">
-              <p className="text-muted-foreground">
-                No hay datos financieros para mostrar
-              </p>
-              <Button className="mt-4" asChild>
-                <Link href="/finances/new">Agregar transaccion</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <FinancialMetricsWidget
+          transactions={transactions}
+          payments={payments}
+        />
       )}
     </div>
   );

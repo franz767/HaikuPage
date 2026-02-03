@@ -2,15 +2,23 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Plus, Building2, Mail, Phone, Trash2, Edit, X, Loader2 } from "lucide-react";
+import { Plus, Building2, Mail, Phone, Trash2, Edit, X, Loader2, FolderOpen, Calendar, DollarSign, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useClients, useDeleteClient, useUpdateClient } from "@/hooks/use-clients";
 import { useCurrentProfile } from "@/hooks/use-profile";
+import { useProjects } from "@/hooks/use-projects";
 
 interface Client {
   id: string;
@@ -36,6 +44,14 @@ export default function ClientsPage() {
     phone: "",
     notes: "",
   });
+
+  // Estado para el modal de proyectos
+  const [viewingClient, setViewingClient] = useState<Client | null>(null);
+
+  // Obtener proyectos del cliente seleccionado
+  const { data: clientProjects, isLoading: isLoadingProjects } = useProjects(
+    viewingClient?.id ?? undefined
+  );
 
   // Solo mostrar opciones de admin cuando el perfil ya cargó completamente
   const isAdmin = !isLoadingProfile && profile?.role === "admin";
@@ -152,7 +168,11 @@ export default function ClientsPage() {
       {!isLoading && clients && clients.length > 0 && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {clients.map((client) => (
-            <Card key={client.id} className="group relative">
+            <Card
+              key={client.id}
+              className="group relative cursor-pointer hover:border-primary/50 transition-colors"
+              onClick={() => setViewingClient(client)}
+            >
               <CardContent className="p-5">
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
@@ -165,7 +185,7 @@ export default function ClientsPage() {
                     )}
                   </div>
                   {isAdmin && (
-                    <div className="flex gap-1">
+                    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -190,22 +210,16 @@ export default function ClientsPage() {
 
                 <div className="mt-4 space-y-2 text-sm">
                   {client.email && (
-                    <a
-                      href={`mailto:${client.email}`}
-                      className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-                    >
+                    <p className="flex items-center gap-2 text-muted-foreground">
                       <Mail className="h-3.5 w-3.5" />
                       {client.email}
-                    </a>
+                    </p>
                   )}
                   {client.phone && (
-                    <a
-                      href={`tel:${client.phone}`}
-                      className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-                    >
+                    <p className="flex items-center gap-2 text-muted-foreground">
                       <Phone className="h-3.5 w-3.5" />
                       {client.phone}
-                    </a>
+                    </p>
                   )}
                 </div>
 
@@ -335,6 +349,105 @@ export default function ClientsPage() {
           </div>
         </div>
       )}
+
+      {/* Modal de proyectos del cliente */}
+      <Dialog open={!!viewingClient} onOpenChange={() => setViewingClient(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FolderOpen className="h-5 w-5" />
+              Proyectos de {viewingClient?.name}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto py-4">
+            {isLoadingProjects ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : clientProjects && clientProjects.length > 0 ? (
+              <div className="space-y-3">
+                {clientProjects.map((project) => {
+                  const statusColors: Record<string, string> = {
+                    inicio: "bg-blue-100 text-blue-700",
+                    "en progreso": "bg-amber-100 text-amber-700",
+                    revision: "bg-purple-100 text-purple-700",
+                    completado: "bg-emerald-100 text-emerald-700",
+                    cancelado: "bg-red-100 text-red-700",
+                  };
+
+                  return (
+                    <div
+                      key={project.id}
+                      className="p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium truncate">{project.name}</h4>
+                          {project.description && (
+                            <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
+                              {project.description}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                            {project.deadline && (
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                {(() => {
+                                  const [y, m, d] = project.deadline.split('-').map(Number);
+                                  return new Date(y, m - 1, d).toLocaleDateString("es-PE", {
+                                    day: "numeric",
+                                    month: "short",
+                                    year: "numeric",
+                                  });
+                                })()}
+                              </span>
+                            )}
+                            {project.budget && (
+                              <span className="flex items-center gap-1">
+                                <DollarSign className="h-3 w-3" />
+                                S/ {project.budget.toLocaleString("es-PE")}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge className={statusColors[project.status] || "bg-gray-100 text-gray-700"}>
+                            {project.status}
+                          </Badge>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            asChild
+                          >
+                            <Link href={`/projects/${project.id}`}>
+                              <ExternalLink className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <FolderOpen className="h-12 w-12 text-muted-foreground/50 mb-3" />
+                <p className="text-muted-foreground">
+                  Este cliente no tiene proyectos asignados
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end pt-4 border-t">
+            <Button variant="outline" onClick={() => setViewingClient(null)}>
+              Cerrar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
