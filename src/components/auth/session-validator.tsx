@@ -17,7 +17,7 @@ export function SessionValidator() {
       isValidating.current = true;
 
       try {
-        const supabase = createClient<Database>();
+        const supabase = createClient();
 
         // Obtener sesión actual
         const { data: { session } } = await supabase.auth.getSession();
@@ -27,8 +27,7 @@ export function SessionValidator() {
         }
 
         // Obtener el session_id almacenado en el perfil
-        const { data: profile, error } = await supabase
-          .from("profiles")
+        const { data: profile, error } = await (supabase.from("profiles") as any)
           .select("current_session_id, role")
           .eq("id", session.user.id)
           .single();
