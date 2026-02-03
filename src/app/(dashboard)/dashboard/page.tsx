@@ -19,8 +19,7 @@ export default async function DashboardPage() {
 
   if (!user) redirect("/login");
 
-  const { data: profileData } = await supabase
-    .from("profiles")
+  const { data: profileData } = await (supabase.from("profiles") as any)
     .select("*")
     .eq("id", user.id)
     .single();
@@ -46,15 +45,13 @@ export default async function DashboardPage() {
     oneYearAgo.setMonth(oneYearAgo.getMonth() - 12);
 
     // Obtener transacciones
-    const { data: transactions } = await supabase
-      .from("transactions")
+    const { data: transactions } = await (supabase.from("transactions") as any)
       .select("amount, type, date")
       .gte("date", oneYearAgo.toISOString().split("T")[0])
       .order("date", { ascending: true });
 
     // Obtener pagos de cuotas aprobados
-    const { data: approvedPayments } = await supabase
-      .from("payment_submissions")
+    const { data: approvedPayments } = await (supabase.from("payment_submissions") as any)
       .select("amount, submitted_at, reviewed_at, status")
       .eq("status", "approved")
       .gte("submitted_at", oneYearAgo.toISOString())
