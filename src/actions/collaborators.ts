@@ -32,9 +32,9 @@ export async function inviteCollaborator(input: InviteCollaboratorInput): Promis
         .from("profiles")
         .select("role")
         .eq("id", user.id)
-        .single();
+        .single() as { data: { role: string } | null };
 
-    if (profile?.role !== "admin") {
+    if (!profile || profile.role !== "admin") {
         return { success: false, error: "Solo los administradores pueden invitar colaboradores" };
     }
 
@@ -111,9 +111,9 @@ export async function deleteCollaborator(userId: string) {
         .from("profiles")
         .select("role")
         .eq("id", user.id)
-        .single();
+        .single() as { data: { role: string } | null };
 
-    if (profile?.role !== "admin") {
+    if (!profile || profile.role !== "admin") {
         throw new Error("No autorizado");
     }
 
