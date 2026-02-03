@@ -34,8 +34,7 @@ export async function inviteClient(input: InviteClientInput): Promise<InviteClie
         return { success: false, error: "No autenticado" };
     }
 
-    const { data: profile } = await supabase
-        .from("profiles")
+    const { data: profile } = await (supabase.from("profiles") as any)
         .select("role")
         .eq("id", user.id)
         .single();
@@ -59,8 +58,7 @@ export async function inviteClient(input: InviteClientInput): Promise<InviteClie
         }
 
         // 2. Crear el registro del cliente primero
-        const { data: client, error: clientError } = await supabase
-            .from("clients")
+        const { data: client, error: clientError } = await (supabase.from("clients") as any)
             .insert({
                 name: input.name,
                 company: input.company || null,
@@ -100,8 +98,7 @@ export async function inviteClient(input: InviteClientInput): Promise<InviteClie
 
         // 4. Crear el perfil con rol cliente
         if (userData.user) {
-            const { error: profileError } = await adminClient
-                .from("profiles")
+            const { error: profileError } = await (adminClient.from("profiles") as any)
                 .upsert({
                     id: userData.user.id,
                     full_name: input.name,
@@ -114,8 +111,7 @@ export async function inviteClient(input: InviteClientInput): Promise<InviteClie
             }
 
             // 5. Actualizar el cliente con el user_id
-            await supabase
-                .from("clients")
+            await (supabase.from("clients") as any)
                 .update({ user_id: userData.user.id })
                 .eq("id", client.id);
         }
