@@ -73,14 +73,14 @@ async function fetchProject(id: string): Promise<ProjectWithRelations> {
   const supabase = createClient();
 
   // Obtener proyecto con cliente
-  const { data, error } = await supabase
+  const { data, error } = (await supabase
     .from("projects")
     .select(`
       *,
       client:clients(id, name, company, email)
     `)
     .eq("id", id)
-    .single();
+    .single()) as { data: ProjectRow & { client: { id: string; name: string; company: string | null; email: string } | null } | null; error: { message: string } | null };
 
   if (error) {
     console.error("Error fetching project:", error);
@@ -89,10 +89,10 @@ async function fetchProject(id: string): Promise<ProjectWithRelations> {
 
   return {
     ...data,
-    metadata: (data.metadata ?? {}) as ProjectMetadata,
-    client: data.client || null,
+    metadata: ((data?.metadata ?? {}) as ProjectMetadata),
+    client: data?.client || null,
     members: [],
-  };
+  } as ProjectWithRelations;
 }
 
 // ==============================================

@@ -231,4 +231,3 @@ export {
   ChartStyle,
   useChart,
 };
-export type { ChartConfig };

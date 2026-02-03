@@ -78,9 +78,9 @@ export function useCreateTask() {
 
             const maxPosition = (existingTasks as any)?.[0]?.position ?? -1;
 
-            const { data, error } = await supabase
-                .from("project_tasks" as any)
-                .insert({ ...task, position: maxPosition + 1 } as any)
+            const { data, error } = await (supabase
+                .from("project_tasks") as any)
+                .insert({ ...task, position: maxPosition + 1 })
                 .select()
                 .single();
 
@@ -101,9 +101,9 @@ export function useUpdateTask() {
     return useMutation({
         mutationFn: async ({ id, ...updates }: TaskUpdate & { id: string }) => {
             const supabase = createClient();
-            const { data, error } = await supabase
-                .from("project_tasks" as any)
-                .update(updates as any)
+            const { data, error } = await (supabase
+                .from("project_tasks") as any)
+                .update(updates)
                 .eq("id", id)
                 .select()
                 .single();

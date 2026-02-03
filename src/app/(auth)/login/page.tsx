@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useFormStatus } from "react-dom";
 import { useSearchParams } from "next/navigation";
@@ -19,7 +19,7 @@ function SubmitButton() {
   );
 }
 
-export default function LoginPage() {
+function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const searchParams = useSearchParams();
 
@@ -92,5 +92,25 @@ export default function LoginPage() {
         </form>
       </CardContent>
     </Card>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <Card>
+        <CardHeader className="space-y-1 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
+            <span className="text-2xl font-bold text-primary-foreground">H</span>
+          </div>
+          <CardTitle className="text-2xl">Bienvenido a Haiku</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Cargando...
+          </p>
+        </CardHeader>
+      </Card>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }

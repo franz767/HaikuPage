@@ -199,12 +199,11 @@ export function useCreatePaymentSubmission() {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("No autenticado");
 
-      const { data, error } = await supabase
-        .from("payment_submissions")
+      const { data, error } = await (supabase.from("payment_submissions") as any)
         .insert({
           ...input,
           submitted_by: user.id,
-        } as never)
+        })
         .select()
         .single();
 
@@ -248,20 +247,18 @@ export function useApprovePayment() {
       if (!user) throw new Error("No autenticado");
 
       // 1. Actualizar el estado de la solicitud
-      const { error: submissionError } = await supabase
-        .from("payment_submissions")
+      const { error: submissionError } = await (supabase.from("payment_submissions") as any)
         .update({
           status: "approved",
           reviewed_at: new Date().toISOString(),
           reviewed_by: user.id,
-        } as never)
+        })
         .eq("id", submissionId);
 
       if (submissionError) throw new Error(submissionError.message);
 
       // 2. Obtener metadata actual del proyecto
-      const { data: project, error: projectError } = await supabase
-        .from("projects")
+      const { data: project, error: projectError } = await (supabase.from("projects") as any)
         .select("metadata")
         .eq("id", projectId)
         .single();

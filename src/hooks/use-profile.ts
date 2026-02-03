@@ -33,11 +33,11 @@ export function useCurrentProfile() {
 
       if (!user) return null;
 
-      const { data, error } = await supabase
+      const { data, error } = (await supabase
         .from("profiles")
         .select("*")
         .eq("id", user.id)
-        .single();
+        .single()) as { data: Record<string, unknown> | null; error: { message: string } | null };
 
       if (error) {
         throw new Error(error.message);
@@ -46,7 +46,7 @@ export function useCurrentProfile() {
       return {
         ...data,
         email: user.email,
-      };
+      } as ProfileWithAuth;
     },
     // Optimización: El perfil raramente cambia, mantenerlo en cache más tiempo
     staleTime: Infinity,
@@ -94,15 +94,15 @@ export function useUpdateProfile() {
 
       if (!user) throw new Error("No autenticado");
 
-      const { data, error } = await supabase
-        .from("profiles")
+      const { data, error } = (await (supabase
+        .from("profiles") as any)
         .update(updates)
         .eq("id", user.id)
         .select()
-        .single();
+        .single()) as { data: Profile | null; error: { message: string } | null };
 
       if (error) throw new Error(error.message);
-      return data;
+      return data as Profile;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: profileKeys.current() });

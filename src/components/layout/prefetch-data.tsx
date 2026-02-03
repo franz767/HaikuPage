@@ -38,11 +38,11 @@ export function PrefetchData() {
 
                 if (!user) return null;
 
-                const { data } = await supabase
+                const { data } = (await supabase
                     .from("profiles")
                     .select("*")
                     .eq("id", user.id)
-                    .single();
+                    .single()) as { data: Record<string, unknown> | null };
 
                 return data ? { ...data, email: user.email } : null;
             },

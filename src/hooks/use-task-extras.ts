@@ -73,9 +73,9 @@ export function useCreateChecklist() {
     return useMutation({
         mutationFn: async ({ taskId, title = "Checklist" }: { taskId: string; title?: string }) => {
             const supabase = createClient();
-            const { data, error } = await supabase
-                .from("task_checklists" as any)
-                .insert({ task_id: taskId, title } as any)
+            const { data, error } = await (supabase
+                .from("task_checklists") as any)
+                .insert({ task_id: taskId, title })
                 .select()
                 .single();
 
@@ -118,9 +118,9 @@ export function useCreateChecklistItem() {
     return useMutation({
         mutationFn: async ({ checklistId, taskId, title }: { checklistId: string; taskId: string; title: string }) => {
             const supabase = createClient();
-            const { data, error } = await supabase
-                .from("task_checklist_items" as any)
-                .insert({ checklist_id: checklistId, title } as any)
+            const { data, error } = await (supabase
+                .from("task_checklist_items") as any)
+                .insert({ checklist_id: checklistId, title })
                 .select()
                 .single();
 
@@ -141,9 +141,9 @@ export function useToggleChecklistItem() {
     return useMutation({
         mutationFn: async ({ id, taskId, isCompleted }: { id: string; taskId: string; isCompleted: boolean }) => {
             const supabase = createClient();
-            const { data, error } = await supabase
-                .from("task_checklist_items" as any)
-                .update({ is_completed: isCompleted } as any)
+            const { data, error } = await (supabase
+                .from("task_checklist_items") as any)
+                .update({ is_completed: isCompleted })
                 .eq("id", id)
                 .select()
                 .single();
@@ -236,15 +236,15 @@ export function useUploadAttachment() {
                 .getPublicUrl(filePath);
 
             // Create attachment record
-            const { data, error } = await supabase
-                .from("task_attachments" as any)
+            const { data, error } = await (supabase
+                .from("task_attachments") as any)
                 .insert({
                     task_id: taskId,
                     file_name: file.name,
                     file_url: publicUrl,
                     file_type: file.type,
                     file_size: file.size,
-                } as any)
+                })
                 .select()
                 .single();
 
@@ -335,13 +335,13 @@ export function useCreateComment() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("No autenticado");
 
-            const { data, error } = await supabase
-                .from("task_comments" as any)
+            const { data, error } = await (supabase
+                .from("task_comments") as any)
                 .insert({
                     task_id: taskId,
                     user_id: user.id,
                     content: content.trim(),
-                } as any)
+                })
                 .select(`
                     *,
                     user:profiles!task_comments_user_id_fkey(id, full_name, avatar_url)
@@ -391,9 +391,9 @@ export function useUpdateComment() {
     return useMutation({
         mutationFn: async ({ id, taskId, content }: { id: string; taskId: string; content: string }) => {
             const supabase = createClient();
-            const { data, error } = await supabase
-                .from("task_comments" as any)
-                .update({ content: content.trim() } as any)
+            const { data, error } = await (supabase
+                .from("task_comments") as any)
+                .update({ content: content.trim() })
                 .eq("id", id)
                 .select()
                 .single();
@@ -464,14 +464,14 @@ export function useCreateActivity() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("No autenticado");
 
-            const { data, error } = await supabase
-                .from("task_activities" as any)
+            const { data, error } = await (supabase
+                .from("task_activities") as any)
                 .insert({
                     task_id: taskId,
                     user_id: user.id,
                     activity_type: activityType,
                     metadata: metadata || null,
-                } as any)
+                })
                 .select()
                 .single();
 
