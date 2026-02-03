@@ -242,8 +242,7 @@ export function useCreateTransaction() {
       status?: "approved" | "pending";
       receipt_url?: string;
     }) => {
-      const { data, error } = await supabase
-        .from("transactions")
+      const { data, error } = await (supabase.from("transactions") as any)
         .insert({
           amount: input.amount,
           type: input.type,
@@ -275,8 +274,7 @@ export function useDeleteTransaction() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from("transactions")
+      const { error } = await (supabase.from("transactions") as any)
         .delete()
         .eq("id", id);
 
