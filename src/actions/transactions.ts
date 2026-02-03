@@ -38,8 +38,7 @@ export async function createTransaction(input: CreateTransactionInput) {
       return { error: "No autorizado", data: null };
     }
 
-    const { data, error } = await supabase
-      .from("transactions")
+    const { data, error } = await (supabase.from("transactions") as any)
       .insert({
         amount: validated.amount,
         type: validated.type,
@@ -86,8 +85,7 @@ export async function updateTransaction(
     return { error: "No autorizado", data: null };
   }
 
-  const { data, error } = await supabase
-    .from("transactions")
+  const { data, error } = await (supabase.from("transactions") as any)
     .update(input)
     .eq("id", id)
     .select()
@@ -114,7 +112,7 @@ export async function deleteTransaction(id: string) {
     return { error: "No autorizado" };
   }
 
-  const { error } = await supabase.from("transactions").delete().eq("id", id);
+  const { error } = await (supabase.from("transactions") as any).delete().eq("id", id);
 
   if (error) {
     return { error: error.message };
