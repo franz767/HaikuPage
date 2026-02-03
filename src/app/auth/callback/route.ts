@@ -15,8 +15,7 @@ export async function GET(request: Request) {
         if (!error && data.user) {
             // Si es una invitación de cliente, actualizar el perfil
             if (type === "invite" && clientId) {
-                const { error: profileError } = await supabase
-                    .from("profiles")
+                const { error: profileError } = await (supabase.from("profiles") as any)
                     .update({
                         role: "cliente",
                         client_id: clientId,
