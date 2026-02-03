@@ -57,8 +57,7 @@ export async function createProject(input: CreateProjectInput) {
     }
 
     // Insertar proyecto
-    const { data, error } = await supabase
-      .from("projects")
+    const { data, error } = await (supabase.from("projects") as any)
       .insert({
         name: validated.name,
         description: validated.description,
@@ -105,8 +104,7 @@ export async function updateProject(input: UpdateProjectInput) {
       return { error: "No autorizado", data: null };
     }
 
-    const { data, error } = await supabase
-      .from("projects")
+    const { data, error } = await (supabase.from("projects") as any)
       .update(updates)
       .eq("id", id)
       .select()
@@ -144,8 +142,7 @@ export async function updateProjectMetadata(
   }
 
   // Obtener metadata actual y hacer merge
-  const { data: current, error: fetchError } = await supabase
-    .from("projects")
+  const { data: current, error: fetchError } = await (supabase.from("projects") as any)
     .select("metadata")
     .eq("id", projectId)
     .single();
@@ -159,8 +156,7 @@ export async function updateProjectMetadata(
     ...metadata,
   };
 
-  const { data, error } = await supabase
-    .from("projects")
+  const { data, error } = await (supabase.from("projects") as any)
     .update({ metadata: mergedMetadata })
     .eq("id", projectId)
     .select()
@@ -185,8 +181,7 @@ export async function deleteProject(projectId: string) {
     return { error: "No autorizado" };
   }
 
-  const { error } = await supabase
-    .from("projects")
+  const { error } = await (supabase.from("projects") as any)
     .delete()
     .eq("id", projectId);
 
@@ -214,8 +209,7 @@ export async function updateProjectStatus(
     return { error: "No autorizado", data: null };
   }
 
-  const { data, error } = await supabase
-    .from("projects")
+  const { data, error } = await (supabase.from("projects") as any)
     .update({ status })
     .eq("id", projectId)
     .select()
