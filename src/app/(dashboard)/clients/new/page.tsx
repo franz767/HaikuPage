@@ -7,10 +7,49 @@ import { ArrowLeft, Loader2, Mail, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { inviteClient } from "@/actions/clients";
+import { useCurrentProfile } from "@/hooks/use-profile";
 
 export default function NewClientPage() {
   const router = useRouter();
+  const { data: profile, isLoading: isLoadingProfile } = useCurrentProfile();
+  const isAdmin = profile?.role === "admin";
+
+  // Loading state
+  if (isLoadingProfile) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6">
+        <div className="flex items-center gap-4">
+          <Skeleton className="h-10 w-10" />
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+        </div>
+        <Skeleton className="h-[400px]" />
+      </div>
+    );
+  }
+
+  // No es admin - acceso denegado
+  if (!isAdmin) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild>
+            <Link href="/clients">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+          </Button>
+          <h1 className="text-2xl font-semibold">Acceso denegado</h1>
+        </div>
+        <p className="text-muted-foreground">
+          Solo los administradores pueden crear nuevos clientes.
+        </p>
+      </div>
+    );
+  }
 
   const [formData, setFormData] = useState({
     name: "",
